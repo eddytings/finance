@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=20;
+const APPV=21;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -229,7 +229,7 @@ function projOptions(sel,noNew){
 const nm=e=>(e.n&&e.n!=='no description')?e.n:e.c;
 function entryRow(e){
   const h=(e.w||'E')==='H';
-  return '<div class="sw"><button class="swdel" data-swdel="'+e.i+'">Delete</button><div class="it" data-edit="'+e.i+'"><div class="t">'+esc(nm(e))+'</div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'?'+':'')+money(e.a)+'</div>'+
+  return '<div class="sw"><button class="swdel" data-swdel="'+e.i+'">Delete</button><div class="it" data-edit="'+e.i+'"><div class="t">'+esc(nm(e))+'</div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'&&e.a>0?'+':'')+money(e.a)+'</div>'+
   '<div class="m">'+(h?'<span class="pill h">Holdiit</span>':'')+(e.w==='S'?'<span class="pill s">Savings'+(e.q?' · '+e.q+' oz':'')+'</span>':'')+(nm(e)===e.c?'':'<span>'+esc(e.c)+'</span>')+(e.p?'<span>· '+esc(e.p)+'</span>':'')+'</div></div></div>';
 }
 function groupedList(es){
@@ -457,7 +457,7 @@ function editProject(name){
   '<div class="grid3" style="margin:12px 0">'+tile('Received',money(s.rec))+tile('Costs',money(s.cost))+tile('Net profit',money(s.profit),'',s.profit<0?'neg':'pos')+'</div>'+
   '<div class="form"><label>Shoot date<input id="pD" type="date" value="'+(p.date||'')+'"></label><label>Budget ($)<input id="pB" type="number" inputmode="decimal" value="'+(p.budget??'')+'"></label>'+
   '</div>'+
-  '<h2>Money for this job</h2><div class="list">'+(allEntries().filter(e=>lc(e.p)===lc(p.name)).sort((a,b)=>a.d<b.d?-1:1).map(e=>'<div class="it" style="cursor:default"><div class="t">'+esc(nm(e))+' <span class="muted small">'+e.d.slice(5)+'</span></div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'?'+':'')+money(e.a)+'</div><div class="m">'+esc(e.c)+'</div></div>').join('')||'<div class="empty">No money tagged yet.</div>')+'</div>'+
+  '<h2>Money for this job</h2><div class="list">'+(allEntries().filter(e=>lc(e.p)===lc(p.name)).sort((a,b)=>a.d<b.d?-1:1).map(e=>'<div class="it" style="cursor:default"><div class="t">'+esc(nm(e))+' <span class="muted small">'+e.d.slice(5)+'</span></div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'&&e.a>0?'+':'')+money(e.a)+'</div><div class="m">'+esc(e.c)+'</div></div>').join('')||'<div class="empty">No money tagged yet.</div>')+'</div>'+
   '<div class="row between" style="margin-top:16px"><button class="btn" id="pDel" style="color:var(--bad)">Delete job</button><button class="btn primary" id="pSave">Save</button></div>');
   $('#pSave').onclick=()=>{p.date=$('#pD').value||p.date;p.budget=$('#pB').value===''?null:+$('#pB').value;persist('meta/projects');closeSheet();render();toast('Saved')};
   $('#pDel').onclick=()=>{if($('#pDel').dataset.sure){S.projects=S.projects.filter(x=>x!==p);persist('meta/projects');closeSheet();render();toast('Job deleted – its entries stay')}else{$('#pDel').dataset.sure=1;$('#pDel').textContent='Tap again to delete'}};
