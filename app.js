@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=31;
+const APPV=32;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -285,7 +285,7 @@ function viewMonth(){
     '<div class="cols"><div><h2>Where the money went</h2><div class="card">'+bars(s.byCat,'H')+'</div></div><div><h2>All Holdiit entries</h2><div class="card" style="padding:4px 12px">'+groupedList([...s.es].reverse())+'</div></div></div>';
   }
   return monthBar()+
-  '<div class="hero">'+tile('Net profit',money(s.profit,true),'Revenue − job costs − expenses','big '+(s.profit<0?'neg':s.profit>0?'pos':''))+
+  '<div class="hero">'+tile('Net profit',money(s.profit,true),'Revenue − money spent','big '+(s.profit<0?'neg':s.profit>0?'pos':''))+
   cashTile(S.ym,'tap to correct')+'</div>'+
   '<div class="eq"><div><span class="l">Job costs</span><span class="v">'+money(s.job)+'</span></div><b>+</b><div><span class="l">Expenses</span><span class="v">'+money(s.exp)+'</span></div><b>=</b><div class="tot"><span class="l">Money spent</span><span class="v">'+money(s.spent)+'</span></div></div>'+
   '<div class="grid3" style="margin-top:10px">'+tile('Revenue',money(s.revenue),s.jobs.length+' job'+(s.jobs.length===1?'':'s'))+tile('Money received',money(s.rec))+tile('Clients owe you',money(totalOwed()),'all jobs')+'</div>'+
@@ -710,8 +710,7 @@ function openMonthDetail(label){
   if(label==='Money spent')return detailSheet('Money spent',money(s.spent),by(e=>e.t==='out').map(eRow));
   if(label==='Net profit')return detailSheet('Net profit',money(s.profit,true),[
     '<div class="it" style="cursor:default"><div class="t">Revenue (jobs dated this month)</div><div class="amt in">+'+money(s.revenue)+'</div></div>',
-    '<div class="it" style="cursor:default"><div class="t">Job costs</div><div class="amt">−'+money(s.job)+'</div></div>',
-    '<div class="it" style="cursor:default"><div class="t">Expenses</div><div class="amt">−'+money(s.exp)+'</div></div>'].concat(s.jobs.length?['<h4 class="ch">Jobs this month</h4>'].concat(s.jobs.map(jRow)):[]),'revenue − job costs − expenses');
+    '<div class="it" style="cursor:default"><div class="t">Money spent <span class="muted small">job costs '+money(s.job)+' + expenses '+money(s.exp)+'</span></div><div class="amt">−'+money(s.spent)+'</div></div>'].concat(s.jobs.length?['<h4 class="ch">Jobs this month</h4>'].concat(s.jobs.map(jRow)):[]),'revenue − money spent');
   if(label==='Clients owe you'){const ps=S.projects.filter(p=>projStats(p).owed>0||(!projStats(p).hasB&&projStats(p).rec<=0)).sort((a,b)=>a.date<b.date?1:-1);
     return detailSheet('Clients owe you',money(totalOwed()),ps.map(jRow),'all jobs not fully paid')}
 }
