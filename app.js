@@ -323,7 +323,7 @@ function viewMore(){
   '<div class="card stack"><h3>Currencies</h3><div class="form"><label>1 USD in AED<input type="number" step="0.0001" id="rateAed" value="'+S.settings.aed+'"></label><label>1 USD in LBP<input type="number" step="1" id="rateLbp" value="'+S.settings.lbp+'"></label><label class="full">Gold price today ($ per ounce)<input type="number" step="1" id="goldPx" value="'+(S.settings.gold||'')+'"></label></div></div>'+
   '<div class="card stack"><h3>What the app has learned ('+rk.length+')</h3><div class="hint">When you fix a category or project before saving, the app remembers it for next time. Remove one if it learned something wrong.</div>'+
   (rk.length?'<div class="list">'+rk.map(k=>'<div class="it" style="cursor:default"><div class="t">'+esc(k)+'</div><button class="x" data-unrule="'+esc(k)+'" aria-label="Forget this">×</button><div class="m">'+esc(S.rules[k].c)+(S.rules[k].p?' · '+esc(S.rules[k].p):'')+(S.rules[k].w==='H'?' · Holdiit':'')+'</div></div>').join('')+'</div>':'<div class="empty">Nothing learned yet.</div>')+'</div>'+
-  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 9. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
+  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 10. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
 }
 
 
@@ -357,18 +357,28 @@ function goldNoAmount(raw,x){const t=lc(raw),m=t.match(/(\d+(?:\.\d+)?)\s*(oz|ou
 async function refreshGold(){try{if(S.goldLive&&Date.now()-S.goldLive.at<6*3600e3)return;const j=await fetch('https://api.gold-api.com/price/XAU',{cache:'no-cache'}).then(r=>r.json());
   if(j&&j.price){S.goldLive={p:Math.round(j.price),at:Date.now()};try{localStorage.setItem('fin-gold',JSON.stringify(S.goldLive))}catch(e){}if(S.view==='savings')render();else refreshChips()}}catch(e){}}
 try{S.goldLive=JSON.parse(localStorage.getItem('fin-gold')||'null')}catch(e){}
-const KINDS=[['auto','Auto'],['out','Expense'],['in','Received'],['job','Job'],['save','Savings'],['hold','Holdiit']];
-try{S.kind=localStorage.getItem('em-kind')||'auto'}catch(e){S.kind='auto'}
+const KINDS=[['auto','Auto'],['job','Job'],['save','Savings'],['hold','Holdiit'],['c:Office','Office'],['c:Home','Home'],['c:Dubai','Dubai'],['c:Food (personal)','Food'],['c:Subscriptions & AI','Subscriptions'],['c:Car & Fuel','Car']];
+try{S.kind=localStorage.getItem('em-kind')||'auto';if(!KINDS.some(([k])=>k===S.kind))S.kind='auto'}catch(e){S.kind='auto'}
+// The tick means money came IN to the selected section; no tick means money went OUT of it.
 function readTyped(r){
-  const k=S.kind||'auto',base=S.baseDate||today();
-  if(k==='job')return readLine(/^\s*(new\s+)?(job|project)\b/i.test(r.t)?r.t:'job '+r.t,base);
-  let x=readLine((r.c||k==='in'?'✓ ':'')+r.t,base);if(!x||x.kind==='job')return x;
+  const k=S.kind||'auto',base=S.baseDate||today(),tick=!!r.c;
+  if(/^\s*new\s+(job|project)\b/i.test(r.t))return readLine(r.t,base);
+  let x=readLine((tick?'✓ ':'')+r.t,base);if(!x||x.kind==='job')return x;
   if(!x.a&&(k==='save'||x.w==='S'||GOLDW.test(lc(r.t))))x=goldNoAmount(r.t,x);if(!x.a)return x;
-  const desc=lc(x.n);
-  if(k==='out'&&!r.c&&x.t==='in'){x.t='out';if(E_IN.includes(x.c))x.c=x.p?'Extra cost':'Miscellaneous'}
-  if(k==='save'){x.w='S';x.p='';x.c=GOLDW.test(desc)?'Gold':'Cash savings';x.flag=false;x.t=SELL.test(desc)?'in':'out'}
-  if(k==='hold'){x.w='H';x.p='';x.c=x.t==='in'?'Sales':(H_KW.find(([,ks])=>ks.some(kk=>hasWord(desc,kk)))||['Other'])[0];x.flag=false}
-  if(k==='in'&&x.w==='E'&&!x.p){x.c='Other income'}
+  const desc=lc(x.n);x.t=tick?'in':'out';
+  if(k==='auto'){
+    if(x.w==='S')x.t=SELL.test(desc)?'in':'out';
+    else if(x.w==='H')x.c=tick?'Sales':(x.c==='Sales'?'Other':x.c);
+    else if(tick&&!E_IN.includes(x.c)){x.c=x.p?'Project payment':'Other income'}
+    else if(!tick&&E_IN.includes(x.c)){x.c=x.p?'Extra cost':'Miscellaneous'}
+  }
+  if(k==='job'){x.w='E';
+    if(!x.p){const nm=x.n.replace(/no description/,'').trim();x.p=nm?nm.replace(/\b\w/g,m=>m.toUpperCase()):'';x.newJob=!!x.p&&!findProject(x.p)}
+    x.c=tick?'Project payment':(E_JOB.includes(x.c)?x.c:(CREW.some(kk=>hasWord(desc,kk))?'Team cost':/\brent(al)?\b/.test(desc)?'Rental cost':'Extra cost'));
+    x.flag=!x.p}
+  if(k==='save'){x.w='S';x.p='';x.c=GOLDW.test(desc)?'Gold':'Cash savings';x.flag=false;x.t=tick?'out':'in';x.q=x.c==='Gold'?x.q:null}
+  if(k==='hold'){x.w='H';x.p='';x.c=tick?'Sales':(H_KW.find(([,ks])=>ks.some(kk=>hasWord(desc,kk)))||['Other'])[0];x.flag=false}
+  if(k.startsWith('c:')){x.w='E';x.p='';x.c=k.slice(2);x.flag=false}
   return goldOz(x);
 }
 function chipFor(r){
@@ -378,7 +388,8 @@ function chipFor(r){
   if(x.kind==='job')return {h:'<b>'+(x.exists?'Job budget':'New job')+'</b> · '+esc(x.name||'?')+(x.a!==null?' · '+money(x.a):'')+dt};
   if(!x.a)return {h:'Add an amount',warn:true};
   const w=x.w==='H'?'<span class="pill h">Holdiit</span> ':x.w==='S'?'<span class="pill s">Savings'+(x.q?' · '+(x.qAuto?'≈ ':'')+x.q+' oz':'')+'</span> ':'';
-  return {h:w+'<b class="'+(x.t==='in'?'cin':'')+'">'+(x.t==='in'?'+':'')+money(x.a)+'</b> · '+esc(x.c)+(x.p?' · '+esc(x.p):'')+dt,warn:x.flag};
+  if(x.w==='S')return {h:w+'<b class="'+(x.t==='out'?'cin':'')+'">'+(x.t==='out'?'Added ':'Took out ')+money(x.a)+'</b> · '+esc(x.c)+dt};
+  return {h:w+'<b class="'+(x.t==='in'?'cin':'')+'">'+(x.t==='in'?'+':'−')+money(x.a)+'</b> · '+esc(x.c)+(x.p?' · '+esc(x.p)+(x.newJob?' (new job)':''):(x.flag&&S.kind==='job'?' · type the job name':''))+dt,warn:x.flag};
 }
 function refreshChips(){document.querySelectorAll('.ckc[data-chip]').forEach(el=>{const r=S.rows[+el.dataset.chip];if(!r)return;const ch=chipFor(r);el.innerHTML=ch.h;el.classList.toggle('warn',!!ch.warn)})}
 function commitRow(r){
@@ -396,7 +407,7 @@ function saveRows(){try{localStorage.setItem('em-rows',JSON.stringify(S.rows))}c
 function focusRow(i,end){const el=document.querySelector('.ckt[data-ln="'+i+'"]');if(el){el.focus();if(end){const n=el.value.length;el.setSelectionRange(n,n)}else el.setSelectionRange(0,0)}}
 function bindRows2(){
   const q=$('#quick');if(!q||q.dataset.b)return;q.dataset.b=1;
-  q.addEventListener('click',ev=>{const b=ev.target.closest('.ckb');if(!b)return;const i=+b.dataset.ck;S.rows[i].c=!S.rows[i].c;b.setAttribute('aria-pressed',S.rows[i].c);b.parentElement.classList.toggle('on',S.rows[i].c);if(S.rows[i].c&&S.kind!=='in')setKind('in',true);else if(!S.rows[i].c&&S.kind==='in'&&!S.rows.some(r=>r.c))setKind('auto',true);saveRows();refreshChips();const inp=b.parentElement.querySelector('.ckt');if(inp&&!inp.value)inp.focus()});
+  q.addEventListener('click',ev=>{const b=ev.target.closest('.ckb');if(!b)return;const i=+b.dataset.ck;S.rows[i].c=!S.rows[i].c;b.setAttribute('aria-pressed',S.rows[i].c);b.parentElement.classList.toggle('on',S.rows[i].c);saveRows();refreshChips();const inp=b.parentElement.querySelector('.ckt');if(inp&&!inp.value)inp.focus()});
   q.addEventListener('input',ev=>{const el=ev.target.closest('.ckt');if(!el)return;const i=+el.dataset.ln;S.rows[i].t=el.value;saveRows();const c=q.querySelector('.ckc[data-chip="'+i+'"]');if(c){const ch=chipFor(S.rows[i]);c.innerHTML=ch.h;c.classList.toggle('warn',!!ch.warn)}});
   q.addEventListener('keydown',ev=>{const el=ev.target.closest('.ckt');if(!el)return;const i=+el.dataset.ln;
     if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();
@@ -633,8 +644,5 @@ function bindSwipe(){
 function toastUndo(id){const e=S.entries[id];toast('Deleted · '+(e?money(e.a)+' '+esc(e.n||e.c):''));const t=document.querySelector('.toast');if(!t)return;
   const b=document.createElement('button');b.className='undo';b.textContent='Undo';b.onclick=()=>{const x=S.entries[id];if(x){x.deleted=false;S.out.e[id]=1;rebuild();persist('e');render();toast('Back')}};t.appendChild(b)}
 
-/* tick circle and 'Received' type move together */
-function setKind(k,fromTick){S.kind=k;try{localStorage.setItem('em-kind',k)}catch(e){}
-  document.querySelectorAll('[data-kind]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.kind===k));
-  if(fromTick)return;const on=k==='in';S.rows.forEach(r=>r.c=on);saveRows();
-  document.querySelectorAll('.ckb[data-ck]').forEach(b=>{b.setAttribute('aria-pressed',on);b.parentElement.classList.toggle('on',on)})}
+function setKind(k){S.kind=k;try{localStorage.setItem('em-kind',k)}catch(e){}
+  document.querySelectorAll('[data-kind]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.kind===k))}
