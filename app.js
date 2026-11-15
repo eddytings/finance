@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=25;
+const APPV=26;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -92,7 +92,7 @@ async function sync(){
       const {error}=await sb.from('entries').upsert(rows);if(error)throw error;ids.forEach(id=>delete S.out.e[id])}
     const pids=Object.keys(S.out.p);
     if(pids.length){const rows=pids.map(id=>S.projMap[id]).filter(Boolean).map(toRowP);const {error}=await sb.from('projects').upsert(rows);if(error)throw error;pids.forEach(id=>delete S.out.p[id])}
-    if(S.out.s){const {error}=await sb.from('settings').upsert({user_id:session.user.id,data:{rules:S.rules,aed:S.settings.aed,lbp:S.settings.lbp,gold:S.settings.gold||null,cash:S.settings.cash||null}});if(error)throw error;S.out.s=false}
+    if(S.out.s){const {error}=await sb.from('settings').upsert({user_id:session.user.id,data:{rules:S.rules,aed:S.settings.aed,lbp:S.settings.lbp,gold:S.settings.gold||null}});if(error)throw error;S.out.s=false}
     cacheSave();
     // 2. get what changed elsewhere
     let changed=false;
@@ -104,7 +104,7 @@ async function sync(){
       const {data,error}=await q;if(error)throw error;
       for(const r of data){if(!S.out.p[r.id]){S.projMap[r.id]=fromRowP(r);changed=true}S.lastP=r.updated_at}}
     if(!S.out.s){const {data,error}=await sb.from('settings').select('data').maybeSingle();if(!error&&data&&data.data){const d=data.data;
-      const before=JSON.stringify([S.rules,S.settings]);S.rules=d.rules??S.rules;S.settings=Object.assign(S.settings,{aed:d.aed||S.settings.aed,lbp:d.lbp||S.settings.lbp,gold:d.gold??S.settings.gold,cash:d.cash??S.settings.cash});
+      const before=JSON.stringify([S.rules,S.settings]);S.rules=d.rules??S.rules;S.settings=Object.assign(S.settings,{aed:d.aed||S.settings.aed,lbp:d.lbp||S.settings.lbp,gold:d.gold??S.settings.gold});
       if(JSON.stringify([S.rules,S.settings])!==before)changed=true}}
     cacheSave();
     if(changed){rebuild();if(!S.preview.length&&!(document.activeElement&&(document.activeElement.id==='mSearch'||document.activeElement.closest&&document.activeElement.closest('#quick')))&&$('#sheet').hidden)render()}
@@ -113,17 +113,6 @@ async function sync(){
 }
 
 /* ---------- data helpers ---------- */
-// Cash in hand: anchored to the amount you told the app on a given day, then moved by every entry (all wallets).
-const CASH_FROM='2026-01-01'; // cash in hand counts from the start of 2026
-function cashAt(x){if(x<CASH_FROM)return null;let b=0;for(const e of allEntries())if(e.d>=CASH_FROM&&e.d<=x)b+=e.t==='in'?e.a:-e.a;return b}
-function monthEndOf(ym){const [y,m]=ym.split('-').map(Number);const d=new Date(Date.UTC(y,m,0)).toISOString().slice(0,10);const t=today();return d>t?t:d}
-function cashTile(ym,s){const v=cashAt(monthEndOf(ym));
-  if(v===null)return tile('Cash in hand','—','counted from Jan 2026','big');
-  return '<button type="button" class="tile big '+(v<0?'neg':'pos')+'" id="setCash" style="text-align:left;cursor:pointer"><span class="l">Cash in hand</span><span class="v">'+money(v)+'</span><span class="s">this month '+money(s.cash,true)+'</span></button>'}
-function cashSheet(){const c=S.settings.cash||{};
-  openSheet('<div class="row between"><h3>Cash in hand today</h3><button class="x" id="sx" aria-label="Close">×</button></div><div class="form" style="margin-top:12px"><label class="full">Amount you have now ($)<input id="cashA" type="number" inputmode="decimal" value="'+(c.a??'')+'"></label></div><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" id="cashSave">Save</button></div>');
-  setTimeout(()=>$('#cashA').focus(),50);
-  $('#cashSave').onclick=()=>{const v=$('#cashA').value;if(v==='')return;S.settings.cash={a:+v,d:today()};persist('meta/settings');closeSheet();render();toast('Cash in hand set')}}
 function allEntries(){const out=[];for(const k in S.months)for(const e of S.months[k])out.push(e);return out}
 function monthEntries(ym,w){return (S.months[ym]||[]).filter(e=>(e.w||'E')===w)}
 function findProject(name){const n=lc(name);return S.projects.find(p=>lc(p.name)===n)}
@@ -288,9 +277,9 @@ function viewMonth(){
   }
   return monthBar()+
   '<div class="hero">'+tile('Net profit',money(s.profit,true),'Revenue − job costs − expenses','big '+(s.profit<0?'neg':s.profit>0?'pos':''))+
-  cashTile(S.ym,s)+'</div>'+
+  tile('Cash flow',money(s.cash,true),'Received − spent','big '+(s.cash<0?'neg':s.cash>0?'pos':''))+'</div>'+
   '<div class="eq"><div><span class="l">Job costs</span><span class="v">'+money(s.job)+'</span></div><b>+</b><div><span class="l">Expenses</span><span class="v">'+money(s.exp)+'</span></div><b>=</b><div class="tot"><span class="l">Money spent</span><span class="v">'+money(s.spent)+'</span></div></div>'+
-  '<div class="grid3" style="margin-top:10px">'+tile('Revenue',money(s.revenue),s.jobs.length+' job'+(s.jobs.length===1?'':'s'))+tile('Money received',money(s.rec))+tile('Cash flow this month',money(s.cash,true),'received − spent',s.cash<0?'neg':'')+tile('Clients owe you',money(totalOwed()),'all jobs')+'</div>'+
+  '<div class="grid3" style="margin-top:10px">'+tile('Revenue',money(s.revenue),s.jobs.length+' job'+(s.jobs.length===1?'':'s'))+tile('Money received',money(s.rec))+tile('Clients owe you',money(totalOwed()),'all jobs')+'</div>'+
   savedNote(S.ym)+'<div class="cols"><div><h2>Where the money went</h2><div class="card">'+bars(s.byCat,'E')+'<div class="hint" style="margin-top:6px">Orange = job costs · blue = monthly expenses</div></div>'+
   '</div><div><h2>Jobs this month</h2><div class="card" style="padding:4px 12px">'+(s.jobs.length?s.jobs.map(jobCard).join(''):'<div class="empty">No jobs dated this month.</div>')+'</div>'+
   '</div></div><h2>All entries</h2><div class="card" style="padding:8px 12px"><input type="text" class="search" id="mSearch" placeholder="Search this month" aria-label="Search this month"><div id="mList">'+groupedList([...s.es].reverse())+'</div></div>';
@@ -315,16 +304,16 @@ function viewYear(){
   for(let m=1;m<=12;m++){const ym=y+'-'+String(m).padStart(2,'0');const s=monthSummary(ym,w);
     cash.push(s.cash);T.rev+=s.revenue;T.prof+=s.profit;T.rec+=s.rec;T.sp+=s.spent;T.cash+=s.cash;
     const c=v=>'<td class="'+(v<0?'neg':'')+'">'+money(v)+'</td>';
-    const ch=cashAt(monthEndOf(ym));rows+='<tr data-ym="'+ym+'" style="cursor:pointer"><td>'+MONTHS[m-1].slice(0,3)+'</td>'+(w==='E'?c(s.revenue)+c(s.profit):'')+c(s.rec)+c(s.spent)+c(s.cash)+(ch===null?'<td>—</td>':c(ch))+'</tr>'}
+    rows+='<tr data-ym="'+ym+'" style="cursor:pointer"><td>'+MONTHS[m-1].slice(0,3)+'</td>'+(w==='E'?c(s.revenue)+c(s.profit):'')+c(s.rec)+c(s.spent)+c(s.cash)+'</tr>'}
   const max=Math.max(1,...cash.map(Math.abs));const W=520,H=160,mid=H/2,bw=W/12;
   let svg='<svg class="chart" viewBox="0 0 '+W+' '+(H+20)+'" role="img" aria-label="Cash flow per month"><line x1="0" x2="'+W+'" y1="'+mid+'" y2="'+mid+'" stroke="var(--line)"/>';
   cash.forEach((v,i)=>{const h=Math.abs(v)/max*(mid-8);const x=i*bw+bw*.18;svg+='<rect x="'+x+'" width="'+bw*.64+'" y="'+(v>=0?mid-h:mid)+'" height="'+Math.max(h,1)+'" rx="3" fill="'+(v>=0?'var(--good)':'var(--bad)')+'"/><text x="'+(i*bw+bw/2)+'" y="'+(H+14)+'" text-anchor="middle" font-size="11" fill="var(--muted)">'+MONTHS[i][0]+'</text>'});
   svg+='</svg>';
   return '<div class="phead"><div><h1>'+y+(w==='H'?' · Holdiit':'')+'</h1><p class="lead">All months side by side.</p></div><div class="row"><button class="arrow" id="prevY" aria-label="Previous year">‹</button><button class="arrow" id="nextY" aria-label="Next year">›</button></div></div>'+
-  '<div class="hero">'+(w==='E'?tile('Net profit',money(T.prof,true),'whole year','big '+(T.prof<0?'neg':'pos')):tile('Sales',money(T.rec),'whole year','big'))+cashTile(y+'-12',{cash:T.cash}).replace('this month','this year')+'</div>'+
+  '<div class="hero">'+(w==='E'?tile('Net profit',money(T.prof,true),'whole year','big '+(T.prof<0?'neg':'pos')):tile('Sales',money(T.rec),'whole year','big'))+tile('Cash flow',money(T.cash,true),'received − spent','big '+(T.cash<0?'neg':'pos'))+'</div>'+
   '<h2>Cash flow by month</h2><div class="card">'+svg+'</div>'+
-  '<h2>Month by month</h2><div class="card scrollx"><table class="yr"><thead><tr><th>Month</th>'+(w==='E'?'<th>Revenue</th><th>Net profit</th>':'')+'<th>Received</th><th>Spent</th><th>Cash flow</th><th>Cash in hand</th></tr></thead><tbody>'+rows+
-  '<tr class="tot"><td>Total</td>'+(w==='E'?'<td>'+money(T.rev)+'</td><td class="'+(T.prof<0?'neg':'')+'">'+money(T.prof)+'</td>':'')+'<td>'+money(T.rec)+'</td><td>'+money(T.sp)+'</td><td class="'+(T.cash<0?'neg':'')+'">'+money(T.cash)+'</td><td></td></tr></tbody></table></div>'+
+  '<h2>Month by month</h2><div class="card scrollx"><table class="yr"><thead><tr><th>Month</th>'+(w==='E'?'<th>Revenue</th><th>Net profit</th>':'')+'<th>Received</th><th>Spent</th><th>Cash flow</th></tr></thead><tbody>'+rows+
+  '<tr class="tot"><td>Total</td>'+(w==='E'?'<td>'+money(T.rev)+'</td><td class="'+(T.prof<0?'neg':'')+'">'+money(T.prof)+'</td>':'')+'<td>'+money(T.rec)+'</td><td>'+money(T.sp)+'</td><td class="'+(T.cash<0?'neg':'')+'">'+money(T.cash)+'</td></tr></tbody></table></div>'+
   '<div class="hint" style="margin-top:8px">Tap a month to open it.</div>';
 }
 function viewMore(){
@@ -494,7 +483,6 @@ function bind(){
     document.querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>{setKind(b.dataset.kind);refreshChips();const f=document.querySelector('.ckt');f&&f.focus()});
   }
   if(v==='month'){
-    
     $('#prevM').onclick=()=>{S.ym=shiftYm(S.ym,-1);render()};$('#pickM').onclick=()=>monthPicker(+S.ym.slice(0,4));$('#nextM').onclick=()=>{S.ym=shiftYm(S.ym,1);render()};
     const ms=$('#mSearch');if(ms)ms.oninput=()=>{const q=lc(ms.value);const es=monthEntries(S.ym,S.wallet).filter(e=>!q||lc(e.n+' '+e.c+' '+(e.p||'')).includes(q)).reverse();$('#mList').innerHTML=groupedList(es);bindRows()};
   }
