@@ -323,7 +323,7 @@ function viewMore(){
   '<div class="card stack"><h3>Currencies</h3><div class="form"><label>1 USD in AED<input type="number" step="0.0001" id="rateAed" value="'+S.settings.aed+'"></label><label>1 USD in LBP<input type="number" step="1" id="rateLbp" value="'+S.settings.lbp+'"></label><label class="full">Gold price today ($ per ounce)<input type="number" step="1" id="goldPx" value="'+(S.settings.gold||'')+'"></label></div></div>'+
   '<div class="card stack"><h3>What the app has learned ('+rk.length+')</h3><div class="hint">When you fix a category or project before saving, the app remembers it for next time. Remove one if it learned something wrong.</div>'+
   (rk.length?'<div class="list">'+rk.map(k=>'<div class="it" style="cursor:default"><div class="t">'+esc(k)+'</div><button class="x" data-unrule="'+esc(k)+'" aria-label="Forget this">×</button><div class="m">'+esc(S.rules[k].c)+(S.rules[k].p?' · '+esc(S.rules[k].p):'')+(S.rules[k].w==='H'?' · Holdiit':'')+'</div></div>').join('')+'</div>':'<div class="empty">Nothing learned yet.</div>')+'</div>'+
-  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 7. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label><button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
+  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 8. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
 }
 
 
@@ -474,6 +474,7 @@ function bind(){
     $('#rateLbp').onchange=e=>{S.settings.lbp=+e.target.value||89500;persist('meta/settings')};
     $('#goldPx').onchange=e=>{S.settings.gold=+e.target.value||null;persist('meta/settings')};
     const so=$('#signOutBtn');if(so)so.onclick=signOut;
+    const bc=$('#bioChk');if(bc)bc.onchange=async()=>{if(bc.checked){try{await bioEnable();toast('Face ID is on – the app will ask for it when you open it')}catch(e){bc.checked=false;toast('Face ID could not be turned on on this device')}}else{try{localStorage.removeItem(BIO_KEY)}catch(e){}toast('Face ID is off')}};
     const lk=$('#lockChk');if(lk)lk.onchange=()=>{try{localStorage.setItem('fin-lock',lk.checked?'1':'0')}catch(e){}toast(lk.checked?'You will be asked to sign in next time you open the app':'You will stay signed in on this device')};
     document.querySelectorAll('[data-unrule]').forEach(b=>b.onclick=()=>{delete S.rules[b.dataset.unrule];persist('meta/rules');render()});
   }
@@ -555,20 +556,42 @@ function loginView(msg){
     if(up&&!data.session){loginView('Account created. Open the confirmation email, tap the link, then come back and sign in.');return}};
   $('#lgIn').onclick=()=>go(false);$('#lgUp').onclick=()=>go(true);
 }
-function startApp(){
+/* ---------- Face ID / fingerprint lock (this device only) ---------- */
+const BIO_KEY='fin-bio';
+function bioOn(){try{return !!localStorage.getItem(BIO_KEY)}catch(e){return false}}
+const b64=buf=>btoa(String.fromCharCode(...new Uint8Array(buf))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+const unb64=s=>Uint8Array.from(atob(s.replace(/-/g,'+').replace(/_/g,'/')+'==='.slice((s.length+3)%4)),c=>c.charCodeAt(0));
+async function bioEnable(){
+  const cred=await navigator.credentials.create({publicKey:{rp:{name:'Finance',id:location.hostname},user:{id:crypto.getRandomValues(new Uint8Array(16)),name:session.user.email,displayName:'Finance'},
+    challenge:crypto.getRandomValues(new Uint8Array(32)),pubKeyCredParams:[{type:'public-key',alg:-7},{type:'public-key',alg:-257}],
+    authenticatorSelection:{authenticatorAttachment:'platform',userVerification:'required',residentKey:'preferred'},timeout:60000,attestation:'none'}});
+  localStorage.setItem(BIO_KEY,b64(cred.rawId));
+}
+async function bioCheck(){await navigator.credentials.get({publicKey:{challenge:crypto.getRandomValues(new Uint8Array(32)),rpId:location.hostname,allowCredentials:[{type:'public-key',id:unb64(localStorage.getItem(BIO_KEY))}],userVerification:'required',timeout:60000}})}
+function lockView(){
+  S.locked=true;document.querySelector('nav.tabs').style.display='none';$('#walletSeg').style.visibility='hidden';
+  $('#app').innerHTML='<div class="card stack" style="max-width:420px;margin:60px auto;text-align:center"><h1 style="margin:0;font-size:24px">Finance is locked</h1>'+
+  '<button class="btn primary" id="bioBtn" style="padding:14px">Unlock with Face ID</button><button class="btn ghost" id="pwBtn">Use my password instead</button></div>';
+  const go=()=>bioCheck().then(()=>{S.locked=false;openApp()}).catch(()=>{});
+  $('#bioBtn').onclick=go;$('#pwBtn').onclick=async()=>{S.locked=false;await sb.auth.signOut();session=null;loginView()};
+  setTimeout(go,300);
+}
+function openApp(){
   document.querySelector('nav.tabs').style.display='';$('#walletSeg').style.visibility='';
   cacheLoad();route();setSync();sync();
 }
+function startApp(){if(bioOn()){lockView();return}openApp()}
 async function signOut(){if(pending()&&!confirmTwice())return;await sb.auth.signOut();session=null;S.entries={};S.projMap={};rebuild();loginView()}
 function confirmTwice(){const b=$('#signOutBtn');if(b&&!b.dataset.sure){b.dataset.sure=1;b.textContent='Changes not synced yet – tap again to sign out anyway';return false}return true}
 
 /* ---------- wiring ---------- */
 $('#wE').onclick=()=>{S.wallet='E';render()};$('#wH').onclick=()=>{S.wallet='H';render()};
-function route(){if(!session)return;const h=(location.hash||'#add').slice(1);setView(['add','month','jobs','savings','year','more'].includes(h)?h:'add')}
+function route(){if(!session||S.locked)return;const h=(location.hash||'#add').slice(1);setView(['add','month','jobs','savings','year','more'].includes(h)?h:'add')}
 window.addEventListener('hashchange',route);
 try{S.rows=JSON.parse(localStorage.getItem('em-rows')||'null')}catch(e){}if(!Array.isArray(S.rows)||!S.rows.length)S.rows=[{t:'',c:false}];
 window.addEventListener('online',()=>{setSync();sync()});window.addEventListener('offline',setSync);
-document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
+document.addEventListener('visibilitychange',()=>{if(document.hidden){S.hiddenAt=Date.now();return}
+  if(session&&bioOn()&&!S.locked&&S.hiddenAt&&Date.now()-S.hiddenAt>5*60000){lockView();return}sync()});
 setInterval(()=>{if(!document.hidden)sync()},60000);
 function askEveryTime(){try{const v=localStorage.getItem('fin-lock');if(v!==null)return v==='1';return !matchMedia('(pointer:coarse)').matches}catch(e){return false}}
 (async()=>{
