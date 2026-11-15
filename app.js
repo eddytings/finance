@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=24;
+const APPV=25;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -114,7 +114,8 @@ async function sync(){
 
 /* ---------- data helpers ---------- */
 // Cash in hand: anchored to the amount you told the app on a given day, then moved by every entry (all wallets).
-function cashAt(x){let b=0;for(const e of allEntries())if(e.d<=x)b+=e.t==='in'?e.a:-e.a;return b}
+const CASH_FROM='2026-01-01'; // cash in hand counts from the start of 2026
+function cashAt(x){if(x<CASH_FROM)return null;let b=0;for(const e of allEntries())if(e.d>=CASH_FROM&&e.d<=x)b+=e.t==='in'?e.a:-e.a;return b}
 function monthEndOf(ym){const [y,m]=ym.split('-').map(Number);const d=new Date(Date.UTC(y,m,0)).toISOString().slice(0,10);const t=today();return d>t?t:d}
 function cashTile(ym,s){const v=cashAt(monthEndOf(ym));
   if(v===null)return '<button type="button" class="tile big" id="setCash" style="text-align:left;cursor:pointer"><span class="l">Cash in hand</span><span class="v" style="font-size:20px">Tap to set</span><span class="s">type what you have today</span></button>';
