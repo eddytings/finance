@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=38;
+const APPV=39;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -310,9 +310,9 @@ function viewJobs(){
   return h+'</div>';
 }
 function viewYear(){
-  const y=S.ym.slice(0,4),w=S.wallet;let rows='',T={rev:0,prof:0,rec:0,sp:0,cash:0};const cash=[];
+  const y=S.ym.slice(0,4),w=S.wallet;let rows='',T={rev:0,prof:0,rec:0,sp:0,cash:0,un:0};const cash=[];
   for(let m=1;m<=12;m++){const ym=y+'-'+String(m).padStart(2,'0');const s=monthSummary(ym,w);
-    cash.push(s.cash);T.rev+=s.revenue;T.prof+=s.profit;T.rec+=s.rec;T.sp+=s.spent;T.cash+=s.cash;
+    cash.push(s.cash);T.rev+=s.revenue;T.prof+=s.profit;T.un+=s.unpaid||0;T.rec+=s.rec;T.sp+=s.spent;T.cash+=s.cash;
     const c=v=>'<td class="'+(v<0?'neg':'')+'">'+money(v)+'</td>';
     const ch=cashAt(monthEndOf(ym));rows+='<tr data-ym="'+ym+'" style="cursor:pointer"><td>'+MONTHS[m-1].slice(0,3)+'</td>'+(w==='E'?c(s.revenue)+c(s.profit):'')+c(s.rec)+c(s.spent)+(ch===null?'<td>—</td>':c(ch))+'</tr>'}
   const max=Math.max(1,...cash.map(Math.abs));const W=520,H=160,mid=H/2,bw=W/12;
@@ -320,7 +320,7 @@ function viewYear(){
   cash.forEach((v,i)=>{const h=Math.abs(v)/max*(mid-8);const x=i*bw+bw*.18;svg+='<rect x="'+x+'" width="'+bw*.64+'" y="'+(v>=0?mid-h:mid)+'" height="'+Math.max(h,1)+'" rx="3" fill="'+(v>=0?'var(--good)':'var(--bad)')+'"/><text x="'+(i*bw+bw/2)+'" y="'+(H+14)+'" text-anchor="middle" font-size="11" fill="var(--muted)">'+MONTHS[i][0]+'</text>'});
   svg+='</svg>';
   return '<div class="phead"><div><h1>'+y+(w==='H'?' · Holdiit':'')+'</h1><p class="lead">All months side by side.</p></div><div class="row"><button class="arrow" id="prevY" aria-label="Previous year">‹</button><button class="arrow" id="nextY" aria-label="Next year">›</button></div></div>'+
-  '<div class="hero">'+(w==='E'?tile('Net profit',money(T.prof,true),'whole year · only money already received','big '+(T.prof<0?'neg':'pos')):tile('Sales',money(T.rec),'whole year','big'))+cashTile(y+'-12','this year in − out '+money(T.cash,true))+'</div>'+
+  '<div class="hero">'+(w==='E'?tile('Net profit',money(T.prof,true),'money received − money spent'+(T.un>0?' · '+money(T.un)+' still not paid':''),'big '+(T.prof<0?'neg':'pos')):tile('Sales',money(T.rec),'whole year','big'))+cashTile(y+'-12','tap to correct')+'</div>'+
   '<h2>Cash flow by month (received − spent)</h2><div class="card">'+svg+'</div>'+
   '<h2>Month by month</h2><div class="card scrollx"><table class="yr"><thead><tr><th>Month</th>'+(w==='E'?'<th>Revenue</th><th>Net profit</th>':'')+'<th>Received</th><th>Spent</th><th>Money you have</th></tr></thead><tbody>'+rows+
   '<tr class="tot"><td>Total</td>'+(w==='E'?'<td>'+money(T.rev)+'</td><td class="'+(T.prof<0?'neg':'')+'">'+money(T.prof)+'</td>':'')+'<td>'+money(T.rec)+'</td><td>'+money(T.sp)+'</td><td></td></tr></tbody></table></div>'+
