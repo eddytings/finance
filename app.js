@@ -2,7 +2,7 @@
 /* ---------- constants ---------- */
 const E_IN=['Project payment','Other income'];
 const E_JOB=['Team cost','Rental cost','Extra cost'];
-const E_EXP=['Salaries','Office','Home','Car & Fuel','Food (personal)','Subscriptions & AI','Family','Insurance','Dubai','Health','Equipment','Travel','Education','Miscellaneous'];
+const E_EXP=['Salaries','Office','Home','Car & Fuel','Food (personal)','Subscriptions & AI','Family','Insurance','Dubai','Health','Equipment','Travel','Education','Entertainment','Miscellaneous'];
 const H_IN=['Sales','Other income'];
 const H_OUT=['Stock & supplier','Branding & design','Packaging','Marketing & ads','Shipping & delivery','Website & tools','Equipment & props','Other'];
 const CREW=['mike','joe','samira','sayed','elissa','jimmy','jaafar','sam','adrielle','crew','freelancer','editor','dop','gaffer','assistant'];
@@ -324,7 +324,7 @@ function viewMore(){
   '<div class="card stack"><h3>Currencies</h3><div class="form"><label>1 USD in AED<input type="number" step="0.0001" id="rateAed" value="'+S.settings.aed+'"></label><label>1 USD in LBP<input type="number" step="1" id="rateLbp" value="'+S.settings.lbp+'"></label><label class="full">Gold price today ($ per ounce)<input type="number" step="1" id="goldPx" value="'+(S.settings.gold||'')+'"></label></div></div>'+
   '<div class="card stack"><h3>What the app has learned ('+rk.length+')</h3><div class="hint">When you fix a category or project before saving, the app remembers it for next time. Remove one if it learned something wrong.</div>'+
   (rk.length?'<div class="list">'+rk.map(k=>'<div class="it" style="cursor:default"><div class="t">'+esc(k)+'</div><button class="x" data-unrule="'+esc(k)+'" aria-label="Forget this">×</button><div class="m">'+esc(S.rules[k].c)+(S.rules[k].p?' · '+esc(S.rules[k].p):'')+(S.rules[k].w==='H'?' · Holdiit':'')+'</div></div>').join('')+'</div>':'<div class="empty">Nothing learned yet.</div>')+'</div>'+
-  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 13. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
+  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 14. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
 }
 
 
@@ -358,7 +358,7 @@ function goldNoAmount(raw,x){const t=lc(raw),m=t.match(/(\d+(?:\.\d+)?)\s*(oz|ou
 async function refreshGold(){try{if(S.goldLive&&Date.now()-S.goldLive.at<6*3600e3)return;const j=await fetch('https://api.gold-api.com/price/XAU',{cache:'no-cache'}).then(r=>r.json());
   if(j&&j.price){S.goldLive={p:Math.round(j.price),at:Date.now()};try{localStorage.setItem('fin-gold',JSON.stringify(S.goldLive))}catch(e){}if(S.view==='savings')render();else refreshChips()}}catch(e){}}
 try{S.goldLive=JSON.parse(localStorage.getItem('fin-gold')||'null')}catch(e){}
-const KINDS=[['job','Job'],['save','Savings'],['hold','Holdiit'],['c:Office','Office'],['c:Home','Home'],['c:Dubai','Dubai'],['c:Food (personal)','Food'],['c:Subscriptions & AI','Subscriptions'],['c:Car & Fuel','Car'],['c:Miscellaneous','Misc']];
+const KINDS=[['job','Job'],['save','Savings'],['hold','Holdiit'],['c:Office','Office'],['c:Home','Home'],['c:Dubai','Dubai'],['c:Food (personal)','Food'],['c:Subscriptions & AI','Subscriptions'],['c:Car & Fuel','Car'],['c:Entertainment','Entertainment'],['c:Miscellaneous','Misc']];
 try{S.kind=localStorage.getItem('em-kind')||'c:Miscellaneous';if(!KINDS.some(([k])=>k===S.kind))S.kind='c:Miscellaneous'}catch(e){S.kind='c:Miscellaneous'}
 // The tick means money came IN to the selected section; no tick means money went OUT of it.
 function readTyped(r){
