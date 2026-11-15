@@ -192,7 +192,7 @@ function readLine(raw,base){
   if(rule&&(!rule.t||rule.t===dir)){c=rule.c||'';p=rule.p||'';if(rule.w)w=rule.w}
   if(!p&&w==='E')p=guessProject(desc)||'';
   if(!c){
-    if(w==='S'){c=/\b(gold|ounces?|oz|lingot)\b/.test(desc)?'Gold':/\bcash\b/.test(desc)||/\bsav/.test(desc)?'Cash savings':'Other savings';if(/\b(sold|sell|sale)\b/.test(desc))dir='in'}
+    if(w==='S'){c=/\b(gold|ounces?|oz|lingot)\b/.test(desc)?'Gold':/\bcash\b/.test(desc)||/\bsav/.test(desc)?'Cash savings':'Other savings';dir=SELL.test(desc)?'in':'out'}
     else if(w==='H'){c=dir==='in'?'Sales':(H_KW.find(([,ks])=>ks.some(k=>hasWord(desc,k)))||['Other'])[0]}
     else if(dir==='in'){c=p?'Project payment':'Other income';if(!p)flag=true}
     else if(p){c=CREW.some(k=>hasWord(desc,k))?'Team cost':(/\brent(al)?\b/.test(desc)?'Rental cost':'Extra cost')}
@@ -204,7 +204,7 @@ function readLine(raw,base){
 }
 
 /* ---------- views ---------- */
-function setView(v){S.view=v;document.querySelectorAll('nav.tabs a').forEach(a=>a.setAttribute('aria-current',a.dataset.v===v?'page':'false'));render()}
+function setView(v){S.view=v;document.querySelectorAll('nav.tabs a,header .ico').forEach(a=>a.setAttribute('aria-current',a.dataset.v===v?'page':'false'));render()}
 function render(){
   const v=S.view;const app=$('#app');
   $('#walletSeg').classList.toggle('h',S.wallet==='H');
@@ -227,8 +227,8 @@ function projOptions(sel,noNew){
 }
 function entryRow(e){
   const h=(e.w||'E')==='H';
-  return '<div class="it" data-edit="'+e.i+'"><div class="t">'+esc(e.n)+'</div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'?'+':'')+money(e.a)+'</div>'+
-  '<div class="m">'+(h?'<span class="pill h">Holdiit</span>':'')+(e.w==='S'?'<span class="pill s">Savings'+(e.q?' · '+e.q+' oz':'')+'</span>':'')+'<span>'+esc(e.c)+'</span>'+(e.p?'<span>· '+esc(e.p)+'</span>':'')+'</div></div>';
+  return '<div class="sw"><button class="swdel" data-swdel="'+e.i+'">Delete</button><div class="it" data-edit="'+e.i+'"><div class="t">'+esc(e.n)+'</div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'?'+':'')+money(e.a)+'</div>'+
+  '<div class="m">'+(h?'<span class="pill h">Holdiit</span>':'')+(e.w==='S'?'<span class="pill s">Savings'+(e.q?' · '+e.q+' oz':'')+'</span>':'')+'<span>'+esc(e.c)+'</span>'+(e.p?'<span>· '+esc(e.p)+'</span>':'')+'</div></div></div>';
 }
 function groupedList(es){
   if(!es.length)return '<div class="empty">Nothing here yet.</div>';
@@ -323,7 +323,7 @@ function viewMore(){
   '<div class="card stack"><h3>Currencies</h3><div class="form"><label>1 USD in AED<input type="number" step="0.0001" id="rateAed" value="'+S.settings.aed+'"></label><label>1 USD in LBP<input type="number" step="1" id="rateLbp" value="'+S.settings.lbp+'"></label><label class="full">Gold price today ($ per ounce)<input type="number" step="1" id="goldPx" value="'+(S.settings.gold||'')+'"></label></div></div>'+
   '<div class="card stack"><h3>What the app has learned ('+rk.length+')</h3><div class="hint">When you fix a category or project before saving, the app remembers it for next time. Remove one if it learned something wrong.</div>'+
   (rk.length?'<div class="list">'+rk.map(k=>'<div class="it" style="cursor:default"><div class="t">'+esc(k)+'</div><button class="x" data-unrule="'+esc(k)+'" aria-label="Forget this">×</button><div class="m">'+esc(S.rules[k].c)+(S.rules[k].p?' · '+esc(S.rules[k].p):'')+(S.rules[k].w==='H'?' · Holdiit':'')+'</div></div>').join('')+'</div>':'<div class="empty">Nothing learned yet.</div>')+'</div>'+
-  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 8. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
+  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 9. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
 }
 
 
@@ -332,12 +332,12 @@ function savedNote(ym){const es=monthEntries(ym,'S');if(!es.length)return '';let
 function viewSavings(){
   const es=allEntries().filter(e=>e.w==='S');let tot=0,oz=0,goldCost=0;const byCat={};
   for(const e of es){const sg=e.t==='in'?-1:1;tot+=sg*e.a;byCat[e.c]=(byCat[e.c]||0)+sg*e.a;if(e.c==='Gold'){if(e.q)oz+=sg*e.q;goldCost+=sg*e.a}}
-  const px=+S.settings.gold||0;const val=px&&oz?oz*px:0;const avg=oz>0?goldCost/oz:0;
+  const px=goldPrice();const val=px&&oz?oz*px:0;const avg=oz>0?goldCost/oz:0;
   const sorted=es.map((e,ix)=>[e,ix]).sort((a,b)=>a[0].d<b[0].d?1:a[0].d>b[0].d?-1:b[1]-a[1]).map(x=>x[0]);
   return pageHead('Savings','Gold and money you put aside. Not counted as spending.')+
   '<div class="hero">'+tile('Total saved',money(tot),'everything you put in − taken out','big pos')+tile('Gold you hold',(Math.round(oz*100)/100)+' oz',oz?'avg '+money(avg)+' per oz':'type e.g. 4000 gold 1 oz','big')+'</div>'+
-  '<div class="grid3" style="margin-top:10px">'+tile('Spent on gold',money(goldCost))+tile('Gold worth now',val?money(val):'—',px?'at '+money(px)+'/oz':'add today\'s price')+tile('Gold gain',val?money(val-goldCost,true):'—','',val?(val-goldCost<0?'neg':'pos'):'')+'</div>'+
-  '<div class="card" style="margin-top:10px"><label class="small muted" for="goldPx2" style="font-weight:600">Gold price today ($ per ounce) – update it when you check</label><input type="number" id="goldPx2" step="1" inputmode="decimal" value="'+(S.settings.gold||'')+'" style="width:100%;margin-top:6px"></div>'+
+  '<div class="grid3" style="margin-top:10px">'+tile('Spent on gold',money(goldCost))+tile('Gold worth now',val?money(val):'—',px?'at '+money(px)+'/oz':'')+tile('Gold gain',val?money(val-goldCost,true):'—','',val?(val-goldCost<0?'neg':'pos'):'')+'</div>'+
+  '<div class="card" style="margin-top:10px"><label class="small muted" for="goldPx2" style="font-weight:600">Gold price '+(S.goldLive?'today '+money(S.goldLive.p)+'/oz (live)':'')+' · type your own to override</label><input type="number" id="goldPx2" step="1" inputmode="decimal" placeholder="Live price" value="'+(S.settings.gold||'')+'" style="width:100%;margin-top:6px"></div>'+
   '<h2>By type</h2><div class="card">'+bars(byCat,'S')+'</div>'+
   '<h2>All savings entries</h2><div class="card" style="padding:4px 12px">'+groupedList(sorted)+'</div>';
 }
@@ -347,18 +347,29 @@ function viewSavings(){
 const CK='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const PH=['25 4g','8000 cerelac','110 aed dinner','yesterday 40 fuel'];
 function rowsHtml(){return S.rows.map((r,i)=>{const ch=chipFor(r);return '<div class="ckr'+(r.c?' on':'')+'"><button type="button" class="ckb" data-ck="'+i+'" aria-pressed="'+(!!r.c)+'" aria-label="Money received">'+CK+'</button><div class="ckm"><input class="ckt" data-ln="'+i+'" value="'+esc(r.t)+'" placeholder="'+(i<PH.length?PH[i]:'')+'" autocomplete="off" autocapitalize="off" enterkeyhint="done"><div class="ckc'+(ch.warn?' warn':'')+'" data-chip="'+i+'">'+ch.h+'</div></div></div>'}).join('')}
+const SELL=/\b(sold|sell|sale|take out|took out|withdraw|withdrew)\b/;
+const GOLDW=/\b(gold|ounces?|oz|lingot)\b/;
+function goldPrice(){return +(S.settings.gold||0)||(S.goldLive&&S.goldLive.p)||0}
+function snapOz(raw){for(const z of [0.1,0.25,0.5,1,1.5,2,2.5,3,4,5,10,20,50,100]){if(Math.abs(raw-z)/z<=0.06)return z}return Math.round(raw*100)/100}
+function goldOz(x){if(x&&x.w==='S'&&x.c==='Gold'&&!x.q&&x.a){const px=goldPrice();if(px){x.q=snapOz(x.a/px);x.qAuto=true}}return x}
+function goldNoAmount(raw,x){const t=lc(raw),m=t.match(/(\d+(?:\.\d+)?)\s*(oz|ounces?)\b/),q=m?parseFloat(m[1]):(/\b(oz|ounces?)\b/.test(t)?1:null),px=goldPrice();
+  return q&&px?{...x,a:Math.round(q*px),q,w:'S',c:'Gold',p:'',t:SELL.test(t)?'in':'out',flag:false}:x}
+async function refreshGold(){try{if(S.goldLive&&Date.now()-S.goldLive.at<6*3600e3)return;const j=await fetch('https://api.gold-api.com/price/XAU',{cache:'no-cache'}).then(r=>r.json());
+  if(j&&j.price){S.goldLive={p:Math.round(j.price),at:Date.now()};try{localStorage.setItem('fin-gold',JSON.stringify(S.goldLive))}catch(e){}if(S.view==='savings')render();else refreshChips()}}catch(e){}}
+try{S.goldLive=JSON.parse(localStorage.getItem('fin-gold')||'null')}catch(e){}
 const KINDS=[['auto','Auto'],['out','Expense'],['in','Received'],['job','Job'],['save','Savings'],['hold','Holdiit']];
 try{S.kind=localStorage.getItem('em-kind')||'auto'}catch(e){S.kind='auto'}
 function readTyped(r){
   const k=S.kind||'auto',base=S.baseDate||today();
   if(k==='job')return readLine(/^\s*(new\s+)?(job|project)\b/i.test(r.t)?r.t:'job '+r.t,base);
-  const x=readLine((r.c||k==='in'?'✓ ':'')+r.t,base);if(!x||x.kind==='job'||!x.a)return x;
+  let x=readLine((r.c||k==='in'?'✓ ':'')+r.t,base);if(!x||x.kind==='job')return x;
+  if(!x.a&&(k==='save'||x.w==='S'||GOLDW.test(lc(r.t))))x=goldNoAmount(r.t,x);if(!x.a)return x;
   const desc=lc(x.n);
   if(k==='out'&&!r.c&&x.t==='in'){x.t='out';if(E_IN.includes(x.c))x.c=x.p?'Extra cost':'Miscellaneous'}
-  if(k==='save'){x.w='S';x.p='';x.c=/\b(gold|ounces?|oz|lingot)\b/.test(desc)?'Gold':'Cash savings';x.flag=false}
+  if(k==='save'){x.w='S';x.p='';x.c=GOLDW.test(desc)?'Gold':'Cash savings';x.flag=false;x.t=SELL.test(desc)?'in':'out'}
   if(k==='hold'){x.w='H';x.p='';x.c=x.t==='in'?'Sales':(H_KW.find(([,ks])=>ks.some(kk=>hasWord(desc,kk)))||['Other'])[0];x.flag=false}
   if(k==='in'&&x.w==='E'&&!x.p){x.c='Other income'}
-  return x;
+  return goldOz(x);
 }
 function chipFor(r){
   if(!r.t.trim())return {h:''};
@@ -366,7 +377,7 @@ function chipFor(r){
   const dt=x.d!==(S.baseDate||today())?' · '+new Date(x.d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
   if(x.kind==='job')return {h:'<b>'+(x.exists?'Job budget':'New job')+'</b> · '+esc(x.name||'?')+(x.a!==null?' · '+money(x.a):'')+dt};
   if(!x.a)return {h:'Add an amount',warn:true};
-  const w=x.w==='H'?'<span class="pill h">Holdiit</span> ':x.w==='S'?'<span class="pill s">Savings'+(x.q?' · '+x.q+' oz':'')+'</span> ':'';
+  const w=x.w==='H'?'<span class="pill h">Holdiit</span> ':x.w==='S'?'<span class="pill s">Savings'+(x.q?' · '+(x.qAuto?'≈ ':'')+x.q+' oz':'')+'</span> ':'';
   return {h:w+'<b class="'+(x.t==='in'?'cin':'')+'">'+(x.t==='in'?'+':'')+money(x.a)+'</b> · '+esc(x.c)+(x.p?' · '+esc(x.p):'')+dt,warn:x.flag};
 }
 function refreshChips(){document.querySelectorAll('.ckc[data-chip]').forEach(el=>{const r=S.rows[+el.dataset.chip];if(!r)return;const ch=chipFor(r);el.innerHTML=ch.h;el.classList.toggle('warn',!!ch.warn)})}
@@ -385,7 +396,7 @@ function saveRows(){try{localStorage.setItem('em-rows',JSON.stringify(S.rows))}c
 function focusRow(i,end){const el=document.querySelector('.ckt[data-ln="'+i+'"]');if(el){el.focus();if(end){const n=el.value.length;el.setSelectionRange(n,n)}else el.setSelectionRange(0,0)}}
 function bindRows2(){
   const q=$('#quick');if(!q||q.dataset.b)return;q.dataset.b=1;
-  q.addEventListener('click',ev=>{const b=ev.target.closest('.ckb');if(!b)return;const i=+b.dataset.ck;S.rows[i].c=!S.rows[i].c;b.setAttribute('aria-pressed',S.rows[i].c);b.parentElement.classList.toggle('on',S.rows[i].c);saveRows();refreshChips();const inp=b.parentElement.querySelector('.ckt');if(inp&&!inp.value)inp.focus()});
+  q.addEventListener('click',ev=>{const b=ev.target.closest('.ckb');if(!b)return;const i=+b.dataset.ck;S.rows[i].c=!S.rows[i].c;b.setAttribute('aria-pressed',S.rows[i].c);b.parentElement.classList.toggle('on',S.rows[i].c);if(S.rows[i].c&&S.kind!=='in')setKind('in',true);else if(!S.rows[i].c&&S.kind==='in'&&!S.rows.some(r=>r.c))setKind('auto',true);saveRows();refreshChips();const inp=b.parentElement.querySelector('.ckt');if(inp&&!inp.value)inp.focus()});
   q.addEventListener('input',ev=>{const el=ev.target.closest('.ckt');if(!el)return;const i=+el.dataset.ln;S.rows[i].t=el.value;saveRows();const c=q.querySelector('.ckc[data-chip="'+i+'"]');if(c){const ch=chipFor(S.rows[i]);c.innerHTML=ch.h;c.classList.toggle('warn',!!ch.warn)}});
   q.addEventListener('keydown',ev=>{const el=ev.target.closest('.ckt');if(!el)return;const i=+el.dataset.ln;
     if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();
@@ -456,8 +467,7 @@ function bind(){
     bindRows2();
     $('#baseDate').onchange=e=>{S.baseDate=e.target.value;refreshChips()};
     $('#saveRows').onclick=()=>{commitAll()};
-    document.querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>{S.kind=b.dataset.kind;try{localStorage.setItem('em-kind',S.kind)}catch(e){}
-      document.querySelectorAll('[data-kind]').forEach(x=>x.setAttribute('aria-pressed',x===b));refreshChips();const f=document.querySelector('.ckt');f&&f.focus()});
+    document.querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>{setKind(b.dataset.kind);refreshChips();const f=document.querySelector('.ckt');f&&f.focus()});
   }
   if(v==='month'){
     $('#prevM').onclick=()=>{S.ym=shiftYm(S.ym,-1);render()};$('#nextM').onclick=()=>{S.ym=shiftYm(S.ym,1);render()};
@@ -481,7 +491,7 @@ function bind(){
   bindRows();
 }
 function bindRows(){
-  document.querySelectorAll('[data-edit]').forEach(r=>r.onclick=()=>editEntry(r.dataset.edit));
+  bindSwipe();
   document.querySelectorAll('[data-proj]').forEach(r=>r.onclick=()=>editProject(r.dataset.proj));
 }
 function shiftYm(ym,d){let [y,m]=ym.split('-').map(Number);m+=d;if(m<1){m=12;y--}if(m>12){m=1;y++}return y+'-'+String(m).padStart(2,'0')}
@@ -577,6 +587,7 @@ function lockView(){
   setTimeout(go,300);
 }
 function openApp(){
+  refreshGold();
   document.querySelector('nav.tabs').style.display='';$('#walletSeg').style.visibility='';
   cacheLoad();route();setSync();sync();
 }
@@ -604,3 +615,26 @@ if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg=>{reg.update();setInterval(()=>reg.update(),30*60000)}).catch(()=>{});
   let reloaded=false;navigator.serviceWorker.addEventListener('controllerchange',()=>{if(reloaded)return;reloaded=true;if(!S.preview.length)location.reload();else toast('New version ready – it loads next time you open the app')});
 }
+
+/* ---------- swipe left to delete ---------- */
+function closeSwipes(except){document.querySelectorAll('.sw.open').forEach(w=>{if(w!==except){w.classList.remove('open');w.querySelector('.it').style.transform=''}})}
+function bindSwipe(){
+  document.querySelectorAll('.sw').forEach(w=>{
+    const it=w.querySelector('.it'),id=it.dataset.edit;let x0=0,y0=0,dx=0,drag=false,moved=false,pid=null;
+    it.addEventListener('pointerdown',e=>{x0=e.clientX;y0=e.clientY;dx=0;drag=true;moved=false;pid=e.pointerId;it.style.transition='none'});
+    it.addEventListener('pointermove',e=>{if(!drag)return;const ddx=e.clientX-x0,ddy=e.clientY-y0;
+      if(!moved){if(Math.abs(ddy)>10&&Math.abs(ddy)>Math.abs(ddx)){drag=false;it.style.transition='';return}if(Math.abs(ddx)<8)return;moved=true;closeSwipes(w);try{it.setPointerCapture(pid)}catch(_){}}
+      const base=w.classList.contains('open')?-88:0;dx=Math.max(-120,Math.min(0,base+ddx));it.style.transform='translateX('+dx+'px)'});
+    const end=()=>{if(!drag)return;drag=false;it.style.transition='';if(!moved)return;const open=dx<-44;w.classList.toggle('open',open);it.style.transform=open?'translateX(-88px)':''};
+    it.addEventListener('pointerup',end);it.addEventListener('pointercancel',end);
+    it.addEventListener('click',e=>{if(moved){moved=false;return}if(w.classList.contains('open')){closeSwipes();return}if(document.querySelector('.sw.open')){closeSwipes();return}editEntry(id)});
+    w.querySelector('.swdel').onclick=e=>{e.stopPropagation();w.classList.add('gone');setTimeout(()=>{removeEntry(id);render();toastUndo(id)},180)};
+  })}
+function toastUndo(id){const e=S.entries[id];toast('Deleted · '+(e?money(e.a)+' '+esc(e.n||e.c):''));const t=document.querySelector('.toast');if(!t)return;
+  const b=document.createElement('button');b.className='undo';b.textContent='Undo';b.onclick=()=>{const x=S.entries[id];if(x){x.deleted=false;S.out.e[id]=1;rebuild();persist('e');render();toast('Back')}};t.appendChild(b)}
+
+/* tick circle and 'Received' type move together */
+function setKind(k,fromTick){S.kind=k;try{localStorage.setItem('em-kind',k)}catch(e){}
+  document.querySelectorAll('[data-kind]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.kind===k));
+  if(fromTick)return;const on=k==='in';S.rows.forEach(r=>r.c=on);saveRows();
+  document.querySelectorAll('.ckb[data-ck]').forEach(b=>{b.setAttribute('aria-pressed',on);b.parentElement.classList.toggle('on',on)})}
