@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=21;
+const APPV=22;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -259,11 +259,11 @@ function bars(byCat,w){
   return '<div class="bars">'+arr.map(([c,v])=>'<div class="b"><span>'+esc(c)+'</span><div class="track"><div class="fill'+(w==='S'?' s':w==='H'?' h':E_JOB.includes(c)?' job':'')+'" style="width:'+Math.max(2,v/max*100)+'%"></div></div><span class="amt">'+money(v)+'</span></div>').join('')+'</div>';
 }
 function jobCard(p){
-  const s=projStats(p);const unpaid=s.owed>0;
+  const s=projStats(p);const noPrice=!s.hasB&&s.rec<=0;const unpaid=s.owed>0||noPrice;
   return '<div class="job'+(unpaid?' unpaid':'')+'" data-proj="'+esc(p.name)+'"><div class="nm">'+esc(p.name)+'</div><div class="amt'+(s.profit<0?'':'')+'" style="color:'+(s.profit<0?'var(--bad)':'var(--ink)')+'">'+money(s.profit)+'</div>'+
   '<div class="meta"><span>'+new Date(p.date+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</span>'+
   '<span>Budget <b>'+(s.hasB?money(p.budget):'—')+'</b></span><span>Cost <b>'+money(s.cost)+'</b></span><span>Received <b>'+money(s.rec)+'</b></span>'+
-  (unpaid?'<span class="pill late">Not fully paid · owes '+money(s.owed)+'</span>':(s.hasB&&s.rec>0?'<span class="pill in">Paid</span>':''))+
+  (noPrice?'<span class="pill late">Owes you · price not set</span>':unpaid?'<span class="pill late">Not fully paid · owes '+money(s.owed)+'</span>':(s.hasB&&s.rec>0?'<span class="pill in">Paid</span>':''))+
   '</div></div>';
 }
 function pageHead(t,lead,right){return '<div class="phead"><div><h1>'+t+'</h1>'+(lead?'<p class="lead">'+lead+'</p>':'')+'</div>'+(right||'')+'</div>'}
@@ -288,10 +288,10 @@ function yearHoldiit(){let t=0;const y=S.ym.slice(0,4);for(const k in S.months)i
 function viewJobs(){
   if(S.wallet==='H')return '<div class="card empty">Jobs are for eddytings work. Switch to eddytings at the top.</div>';
   const ps=S.projects.filter(p=>(p.w||'E')==='E');
-  const owed=ps.map(p=>[p,projStats(p)]).filter(([,s])=>s.owed>0).sort((a,b)=>(a[0].date||'')<(b[0].date||'')?-1:1);
+  const owed=ps.map(p=>[p,projStats(p)]).filter(([,s])=>s.owed>0||(!s.hasB&&s.rec<=0)).sort((a,b)=>(a[0].date||'')<(b[0].date||'')?-1:1);
   const noB=ps.filter(p=>!projStats(p).hasB).length;
   let h=pageHead('Jobs','Every job, what it cost, what you made, and who still owes you.','<button class="btn primary" id="newJob">+ New job</button>')+
-  '<div class="hero" style="grid-template-columns:1fr">'+tile('Clients owe you',money(totalOwed()),owed.length+' job'+(owed.length===1?'':'s')+' not fully paid','big')+'</div>';
+  '<div class="hero" style="grid-template-columns:1fr">'+tile('Clients owe you',money(totalOwed()),(()=>{const np=owed.filter(([,x])=>!x.hasB).length;return owed.length+' job'+(owed.length===1?'':'s')+' waiting'+(np?' · '+np+' without a price yet':'')})(),'big')+'</div>';
   if(owed.length)h+='<h2 class="wait">Waiting for money</h2><div class="card" style="padding:4px 12px">'+owed.map(([p])=>jobCard(p)).join('')+'</div>';
   const by={};for(const p of ps){const k=(p.date||'').slice(0,7);(by[k]=by[k]||[]).push(p)}
   for(const k of Object.keys(by).sort().reverse()){const [y,m]=k.split('-').map(Number);const list=by[k].sort((a,b)=>a.date<b.date?-1:1);
