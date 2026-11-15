@@ -1,5 +1,5 @@
 // Finance – offline support. Bump VERSION on every release so devices pick up the update.
-const VERSION='finance-v33';
+const VERSION='finance-v34';
 const SHELL=['./','index.html','app.js','manifest.webmanifest','vendor/supabase.js','vendor/xlsx.full.min.js',
   'icons/icon-192.png','icons/icon-512.png','icons/maskable-512.png','icons/apple-touch-icon.png','icons/favicon-32.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(VERSION).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()))});

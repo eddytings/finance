@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=33;
+const APPV=34;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -320,7 +320,7 @@ function viewYear(){
   svg+='</svg>';
   return '<div class="phead"><div><h1>'+y+(w==='H'?' · Holdiit':'')+'</h1><p class="lead">All months side by side.</p></div><div class="row"><button class="arrow" id="prevY" aria-label="Previous year">‹</button><button class="arrow" id="nextY" aria-label="Next year">›</button></div></div>'+
   '<div class="hero">'+(w==='E'?tile('Net profit',money(T.prof,true),'whole year','big '+(T.prof<0?'neg':'pos')):tile('Sales',money(T.rec),'whole year','big'))+cashTile(y+'-12','this year in − out '+money(T.cash,true))+'</div>'+
-  '<h2>Received − spent by month</h2><div class="card">'+svg+'</div>'+
+  '<h2>Cash flow by month (received − spent)</h2><div class="card">'+svg+'</div>'+
   '<h2>Month by month</h2><div class="card scrollx"><table class="yr"><thead><tr><th>Month</th>'+(w==='E'?'<th>Revenue</th><th>Net profit</th>':'')+'<th>Received</th><th>Spent</th><th>Money you have</th></tr></thead><tbody>'+rows+
   '<tr class="tot"><td>Total</td>'+(w==='E'?'<td>'+money(T.rev)+'</td><td class="'+(T.prof<0?'neg':'')+'">'+money(T.prof)+'</td>':'')+'<td>'+money(T.rec)+'</td><td>'+money(T.sp)+'</td><td></td></tr></tbody></table></div>'+
   '<div class="hint" style="margin-top:8px">Tap a month to open it.</div>';
