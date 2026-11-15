@@ -26,6 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
+const APPV=20;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -317,14 +318,14 @@ function viewYear(){
 }
 function viewMore(){
   const rk=Object.keys(S.rules).sort();
-  return pageHead('More','Downloads, backup, currencies and settings.')+'<div class="stack">'+
+  return pageHead('More','App version '+APPV)+'<div class="stack">'+
   '<div class="card stack"><h3>Download</h3><div class="hint">An Excel file with every entry, every job and the month totals. Keep one as a backup now and then.</div>'+
   (downloads?'<div class="row" style="flex-wrap:wrap"><button class="btn primary" id="xlsxBtn">Download Excel</button><button class="btn" id="jsonBtn">Download backup file</button></div>':'<div class="hint">Downloads are not available here.</div>')+
   '<label class="small muted" for="restoreFile" style="font-weight:600">Restore from a backup file</label><input type="file" id="restoreFile" accept=".json,application/json"></div>'+
   '<div class="card stack"><h3>Currencies</h3><div class="form"><label>1 USD in AED<input type="number" step="0.0001" id="rateAed" value="'+S.settings.aed+'"></label><label>1 USD in LBP<input type="number" step="1" id="rateLbp" value="'+S.settings.lbp+'"></label><label class="full">Gold price today ($ per ounce)<input type="number" step="1" id="goldPx" value="'+(S.settings.gold||'')+'"></label></div></div>'+
   '<div class="card stack"><h3>What the app has learned ('+rk.length+')</h3><div class="hint">When you fix a category or project before saving, the app remembers it for next time. Remove one if it learned something wrong.</div>'+
   (rk.length?'<div class="list">'+rk.map(k=>'<div class="it" style="cursor:default"><div class="t">'+esc(k)+'</div><button class="x" data-unrule="'+esc(k)+'" aria-label="Forget this">×</button><div class="m">'+esc(S.rules[k].c)+(S.rules[k].p?' · '+esc(S.rules[k].p):'')+(S.rules[k].w==='H'?' · Holdiit':'')+'</div></div>').join('')+'</div>':'<div class="empty">Nothing learned yet.</div>')+'</div>'+
-  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 19. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
+  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
 }
 
 
