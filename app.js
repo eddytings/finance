@@ -244,9 +244,9 @@ function viewAdd(){
   const recent=allEntries().map((e,ix)=>[e,ix]).sort((a,b)=>a[0].d<b[0].d?1:a[0].d>b[0].d?-1:b[1]-a[1]).slice(0,40).map(x=>x[0]);
   return pageHead('Add','')+(!navigator.onLine&&pending()?'<div class="banner">Offline – saved on this device, will sync later.</div>':'')+
   '<div class="cols"><div><div class="card stack">'+
+  '<div class="kinds" role="group" aria-label="Type">'+KINDS.map(([k,l])=>'<button type="button" data-kind="'+k+'" aria-pressed="'+((S.kind||'auto')===k)+'">'+l+'</button>').join('')+'</div>'+
   '<div id="quick" class="ck">'+rowsHtml()+'</div>'+
   '<div class="row between"><div class="row"><input type="date" id="baseDate" value="'+(S.baseDate||today())+'" aria-label="Date">'+
-  (dict?'<button class="btn mic" id="micBtn" aria-label="Speak"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>':'')+
   '</div><button class="btn primary" id="saveRows">Save</button></div></div>'+
   '</div><div><h2 class="first">Latest</h2><div class="card" style="padding:4px 12px">'+groupedList(recent)+'</div></div></div>';
 }
@@ -323,7 +323,7 @@ function viewMore(){
   '<div class="card stack"><h3>Currencies</h3><div class="form"><label>1 USD in AED<input type="number" step="0.0001" id="rateAed" value="'+S.settings.aed+'"></label><label>1 USD in LBP<input type="number" step="1" id="rateLbp" value="'+S.settings.lbp+'"></label><label class="full">Gold price today ($ per ounce)<input type="number" step="1" id="goldPx" value="'+(S.settings.gold||'')+'"></label></div></div>'+
   '<div class="card stack"><h3>What the app has learned ('+rk.length+')</h3><div class="hint">When you fix a category or project before saving, the app remembers it for next time. Remove one if it learned something wrong.</div>'+
   (rk.length?'<div class="list">'+rk.map(k=>'<div class="it" style="cursor:default"><div class="t">'+esc(k)+'</div><button class="x" data-unrule="'+esc(k)+'" aria-label="Forget this">×</button><div class="m">'+esc(S.rules[k].c)+(S.rules[k].p?' · '+esc(S.rules[k].p):'')+(S.rules[k].w==='H'?' · Holdiit':'')+'</div></div>').join('')+'</div>':'<div class="empty">Nothing learned yet.</div>')+'</div>'+
-  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 5. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
+  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 6. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
 }
 
 
@@ -347,9 +347,22 @@ function viewSavings(){
 const CK='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const PH=['25 4g','8000 cerelac','110 aed dinner','yesterday 40 fuel'];
 function rowsHtml(){return S.rows.map((r,i)=>{const ch=chipFor(r);return '<div class="ckr'+(r.c?' on':'')+'"><button type="button" class="ckb" data-ck="'+i+'" aria-pressed="'+(!!r.c)+'" aria-label="Money received">'+CK+'</button><div class="ckm"><input class="ckt" data-ln="'+i+'" value="'+esc(r.t)+'" placeholder="'+(i<PH.length?PH[i]:'')+'" autocomplete="off" autocapitalize="off" enterkeyhint="done"><div class="ckc'+(ch.warn?' warn':'')+'" data-chip="'+i+'">'+ch.h+'</div></div></div>'}).join('')}
+const KINDS=[['auto','Auto'],['out','Expense'],['in','Received'],['job','Job'],['save','Savings'],['hold','Holdiit']];
+try{S.kind=localStorage.getItem('em-kind')||'auto'}catch(e){S.kind='auto'}
+function readTyped(r){
+  const k=S.kind||'auto',base=S.baseDate||today();
+  if(k==='job')return readLine(/^\s*(new\s+)?(job|project)\b/i.test(r.t)?r.t:'job '+r.t,base);
+  const x=readLine((r.c||k==='in'?'✓ ':'')+r.t,base);if(!x||x.kind==='job'||!x.a)return x;
+  const desc=lc(x.n);
+  if(k==='out'&&!r.c&&x.t==='in'){x.t='out';if(E_IN.includes(x.c))x.c=x.p?'Extra cost':'Miscellaneous'}
+  if(k==='save'){x.w='S';x.p='';x.c=/\b(gold|ounces?|oz|lingot)\b/.test(desc)?'Gold':'Cash savings';x.flag=false}
+  if(k==='hold'){x.w='H';x.p='';x.c=x.t==='in'?'Sales':(H_KW.find(([,ks])=>ks.some(kk=>hasWord(desc,kk)))||['Other'])[0];x.flag=false}
+  if(k==='in'&&x.w==='E'&&!x.p){x.c='Other income'}
+  return x;
+}
 function chipFor(r){
   if(!r.t.trim())return {h:''};
-  const x=readLine((r.c?'✓ ':'')+r.t,S.baseDate||today());if(!x)return {h:''};
+  const x=readTyped(r);if(!x)return {h:''};
   const dt=x.d!==(S.baseDate||today())?' · '+new Date(x.d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
   if(x.kind==='job')return {h:'<b>'+(x.exists?'Job budget':'New job')+'</b> · '+esc(x.name||'?')+(x.a!==null?' · '+money(x.a):'')+dt};
   if(!x.a)return {h:'Add an amount',warn:true};
@@ -358,7 +371,7 @@ function chipFor(r){
 }
 function refreshChips(){document.querySelectorAll('.ckc[data-chip]').forEach(el=>{const r=S.rows[+el.dataset.chip];if(!r)return;const ch=chipFor(r);el.innerHTML=ch.h;el.classList.toggle('warn',!!ch.warn)})}
 function commitRow(r){
-  if(!r.t.trim())return null;const x=readLine((r.c?'✓ ':'')+r.t,S.baseDate||today());if(!x)return null;
+  if(!r.t.trim())return null;const x=readTyped(r);if(!x)return null;
   if(x.kind==='job'){if(!x.name)return null;const ex=findProject(x.name);if(ex){if(x.a!==null)ex.budget=x.a}else S.projects.push({name:x.name,date:x.d,budget:x.a,due:null,w:'E'});persist('meta/projects');return 'job '+x.name}
   if(!x.a)return null;
   const n={i:uuid(),d:x.d,t:x.t,c:x.c,n:x.n,a:Math.round(x.a*100)/100,w:x.w};if(x.w==='S'&&x.c==='Gold'&&x.q)n.q=x.q;if(x.w==='E'&&x.p){n.p=x.p;ensureProject(x.p,x.d,'E')}
@@ -443,10 +456,8 @@ function bind(){
     bindRows2();
     $('#baseDate').onchange=e=>{S.baseDate=e.target.value;refreshChips()};
     $('#saveRows').onclick=()=>{commitAll()};
-    const mic=$('#micBtn');if(mic)mic.onclick=()=>{
-      if(mic.classList.contains('on')){dict.stop().catch(()=>{});return}
-      dict.start().catch(err=>{if(err&&err.code==='not_granted')mic.remove()});
-    };
+    document.querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>{S.kind=b.dataset.kind;try{localStorage.setItem('em-kind',S.kind)}catch(e){}
+      document.querySelectorAll('[data-kind]').forEach(x=>x.setAttribute('aria-pressed',x===b));refreshChips();const f=document.querySelector('.ckt');f&&f.focus()});
   }
   if(v==='month'){
     $('#prevM').onclick=()=>{S.ym=shiftYm(S.ym,-1);render()};$('#nextM').onclick=()=>{S.ym=shiftYm(S.ym,1);render()};
@@ -527,15 +538,6 @@ function restoreJson(ev){
 }
 
 /* ---------- device features ---------- */
-(function(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;
-  let rec=null,fin=null,st=null;dict={onFinal(f){fin=f},onState(f){st=f},
-    start(){rec=new SR();rec.lang='en-US';rec.interimResults=false;rec.continuous=true;
-      rec.onresult=ev=>{for(let i=ev.resultIndex;i<ev.results.length;i++)if(ev.results[i].isFinal&&fin)fin({text:ev.results[i][0].transcript})};
-      rec.onend=()=>st&&st({state:'idle'});rec.onerror=()=>st&&st({state:'idle'});rec.start();st&&st({state:'listening'});return Promise.resolve()},
-    stop(){try{rec&&rec.stop()}catch(e){}return Promise.resolve()}};
-  dict.onFinal(({text})=>{const last=S.rows[S.rows.length-1];if(last&&!last.t.trim())last.t=text.trim();else S.rows.push({t:text.trim(),c:false});saveRows();const q=$('#quick');if(q){q.innerHTML=rowsHtml()}});
-  dict.onState(({state})=>{const m=$('#micBtn');if(m)m.classList.toggle('on',state==='listening')});
-})();
 downloads={save({filename,data}){const blob=data instanceof Blob?data:new Blob([data]);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},2000);return Promise.resolve({status:'saved'})}};
 
 /* ---------- sign in ---------- */
