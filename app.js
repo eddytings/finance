@@ -65,7 +65,7 @@ function persist(path){
   } else if(path==='meta/rules'||path==='meta/settings'){S.out.s=true}
   cacheSave();setSync();queueSync();
 }
-function addEntry(e){e.deleted=false;e.ca=e.ca||new Date().toISOString();S.entries[e.i]=e;S.out.e[e.i]=1;rebuild();persist('e')}
+function addEntry(e){if(!/^[0-9a-f-]{36}$/.test(e.i||''))e.i=uuid();e.deleted=false;e.ca=e.ca||new Date().toISOString();S.entries[e.i]=e;S.out.e[e.i]=1;rebuild();persist('e')}
 function removeEntry(id){const e=S.entries[id];if(!e)return;e.deleted=true;S.out.e[id]=1;rebuild();persist('e')}
 function pending(){return Object.keys(S.out.e).length+Object.keys(S.out.p).length+(S.out.s?1:0)}
 function setSync(){
@@ -85,6 +85,7 @@ async function sync(){
   syncing=true;setSync();
   try{
     // 1. send what changed on this device
+    for(const id of Object.keys(S.out.e)){if(!/^[0-9a-f-]{36}$/.test(id)){const e=S.entries[id];delete S.out.e[id];delete S.entries[id];if(e){e.i=uuid();S.entries[e.i]=e;S.out.e[e.i]=1}}}
     const eids=Object.keys(S.out.e);
     for(let i=0;i<eids.length;i+=400){const ids=eids.slice(i,i+400);const rows=ids.map(id=>S.entries[id]).filter(Boolean).map(toRowE);
       const {error}=await sb.from('entries').upsert(rows);if(error)throw error;ids.forEach(id=>delete S.out.e[id])}
@@ -240,33 +241,14 @@ function jobPv(e,i){return '<div class="pv jpv" data-i="'+i+'" style="border-col
   '<div class="f"><input type="text" data-j="name" aria-label="Job name" value="'+esc(e.name)+'" placeholder="Job name"><input type="number" inputmode="decimal" data-j="a" aria-label="Budget" placeholder="Budget $" value="'+(e.a??'')+'">'+
   '<input type="date" data-j="d" aria-label="Shoot date" value="'+e.d+'"><button class="x" data-del="'+i+'" aria-label="Remove this line">×</button></div></div>'}
 function viewAdd(){
-  const recent=allEntries().map((e,ix)=>[e,ix]).sort((a,b)=>a[0].d<b[0].d?1:a[0].d>b[0].d?-1:b[1]-a[1]).slice(0,30).map(x=>x[0]);
-  const pv=S.preview;
-  let pvh='';
-  if(pv.length){
-    pvh='<h2>Check before saving</h2><div class="stack">'+pv.map((e,i)=>e.kind==='job'?jobPv(e,i):'<div class="pv'+(e.flag?' flag':'')+'" data-i="'+i+'">'+
-      '<div class="src">'+esc(e.raw)+(e.flag?' — <b>check this one</b>':'')+'</div>'+
-      '<div class="row" style="grid-column:1/-1;gap:6px;flex-wrap:wrap">'+
-        '<input type="number" step="0.01" inputmode="decimal" aria-label="Amount in dollars" class="num" data-f="a" value="'+e.a+'" style="width:110px">'+
-        '<div class="toggle" role="group" aria-label="Money in or out"><button class="tout" data-f="t" data-val="out" aria-pressed="'+(e.t==='out')+'">'+(e.w==='S'?'Add':'Out')+'</button><button class="tin" data-f="t" data-val="in" aria-pressed="'+(e.t==='in')+'">'+(e.w==='S'?'Take out':'In')+'</button></div>'+
-        '<div class="toggle" role="group" aria-label="Wallet"><button class="te" data-f="w" data-val="E" aria-pressed="'+(e.w==='E')+'">eddytings</button><button class="th" data-f="w" data-val="H" aria-pressed="'+(e.w==='H')+'">Holdiit</button><button class="ts" data-f="w" data-val="S" aria-pressed="'+(e.w==='S')+'">Savings</button></div>'+
-        '<button class="x" data-del="'+i+'" aria-label="Remove this line" style="margin-left:auto">×</button></div>'+
-      '<div class="f"><select data-f="c" aria-label="Category">'+catOptions(e.w,e.t,e.c)+'</select>'+
-        (e.w==='E'?'<select data-f="p" aria-label="Project">'+projOptions(e.p)+'</select>':e.w==='S'&&e.c==='Gold'?'<input type="number" step="0.01" inputmode="decimal" data-f="q" aria-label="Ounces" placeholder="Ounces" value="'+(e.q??'')+'">':'<span></span>')+
-        '<input type="text" data-f="n" aria-label="Description" value="'+esc(e.n)+'">'+
-        '<input type="date" data-f="d" aria-label="Date" value="'+e.d+'"></div></div>').join('')+'</div>'+
-      '<div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn primary" id="saveAll">Save '+pv.length+(pv.length>1?' entries':' entry')+'</button>'+
-      (sample&&pv.some(e=>e.flag)?'<button class="btn" id="askClaude">Ask Claude to sort the yellow ones</button>':'')+
-      '<button class="btn ghost" id="clearPv">Cancel</button></div>';
-  }
-  return pageHead('Add','Type what you spent or received, check it, then save.')+(!navigator.onLine&&pending()?'<div class="banner">You are offline. New entries are kept on this device and will sync when you are back online.</div>':'')+
-  '<div class="cols"><div><div class="card stack"><div class="small muted" style="font-weight:600">Type like your notes – one line each. Tap the circle when it is money you received.</div>'+
+  const recent=allEntries().map((e,ix)=>[e,ix]).sort((a,b)=>a[0].d<b[0].d?1:a[0].d>b[0].d?-1:b[1]-a[1]).slice(0,40).map(x=>x[0]);
+  return pageHead('Add','')+(!navigator.onLine&&pending()?'<div class="banner">Offline – saved on this device, will sync later.</div>':'')+
+  '<div class="cols"><div><div class="card stack">'+
   '<div id="quick" class="ck">'+rowsHtml()+'</div>'+
-  '<div class="row between" style="flex-wrap:wrap"><div class="row"><input type="date" id="baseDate" value="'+(S.baseDate||today())+'" aria-label="Date for these lines">'+
-  (dict?'<button class="btn mic" id="micBtn" aria-label="Speak instead of typing"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>':'')+
-  '</div><button class="btn primary" id="readBtn">Read it</button></div>'+
-  '<div class="hint">Tap ◯ = money received · Enter = new line · add <code>aed</code> or <code>lbp</code> for other currencies · start with <code>job cerelac 8000</code> adds a job with its budget · <code>yesterday</code> or <code>12 nov</code> for another day · a project name tags the job · "bags" or "holdiit" goes to Holdiit · "gold", "oz" or "savings" goes to Savings (e.g. <code>4000 gold 1 oz</code>).</div></div>'+
-  pvh+'</div><div><h2 class="first">Latest</h2><div class="card" style="padding:4px 12px">'+groupedList(recent)+'</div></div></div>';
+  '<div class="row between"><div class="row"><input type="date" id="baseDate" value="'+(S.baseDate||today())+'" aria-label="Date">'+
+  (dict?'<button class="btn mic" id="micBtn" aria-label="Speak"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>':'')+
+  '</div><button class="btn primary" id="saveRows">Save</button></div></div>'+
+  '</div><div><h2 class="first">Latest</h2><div class="card" style="padding:4px 12px">'+groupedList(recent)+'</div></div></div>';
 }
 function tile(l,v,s,cls){return '<div class="tile '+(cls||'')+'"><span class="l">'+l+'</span><span class="v">'+v+'</span>'+(s?'<span class="s">'+s+'</span>':'')+'</div>'}
 function bars(byCat,w){
@@ -282,7 +264,7 @@ function jobCard(p){
   (unpaid?'<span class="pill late">Not fully paid · owes '+money(s.owed)+'</span>':(s.hasB&&s.rec>0?'<span class="pill in">Paid</span>':''))+
   (!s.hasB?'<span class="pill owe">Add budget</span>':'')+'</div></div>';
 }
-function pageHead(t,lead,right){return '<div class="phead"><div><h1>'+t+'</h1><p class="lead">'+lead+'</p></div>'+(right||'')+'</div>'}
+function pageHead(t,lead,right){return '<div class="phead"><div><h1>'+t+'</h1>'+(lead?'<p class="lead">'+lead+'</p>':'')+'</div>'+(right||'')+'</div>'}
 function monthBar(){const [y,m]=S.ym.split('-').map(Number);return '<p class="lead" style="margin:4px 0 0">'+(S.wallet==='H'?'Holdiit this month: sales, costs and profit.':'Your month: what you earned, what you spent, and what is left.')+'</p>'+'<div class="monthbar"><button class="arrow" id="prevM" aria-label="Previous month">‹</button><h1>'+MONTHS[m-1]+' '+y+'</h1><button class="arrow" id="nextM" aria-label="Next month">›</button></div>'}
 function viewMonth(){
   const w=S.wallet,s=monthSummary(S.ym,w);
@@ -341,7 +323,7 @@ function viewMore(){
   '<div class="card stack"><h3>Currencies</h3><div class="form"><label>1 USD in AED<input type="number" step="0.0001" id="rateAed" value="'+S.settings.aed+'"></label><label>1 USD in LBP<input type="number" step="1" id="rateLbp" value="'+S.settings.lbp+'"></label><label class="full">Gold price today ($ per ounce)<input type="number" step="1" id="goldPx" value="'+(S.settings.gold||'')+'"></label></div></div>'+
   '<div class="card stack"><h3>What the app has learned ('+rk.length+')</h3><div class="hint">When you fix a category or project before saving, the app remembers it for next time. Remove one if it learned something wrong.</div>'+
   (rk.length?'<div class="list">'+rk.map(k=>'<div class="it" style="cursor:default"><div class="t">'+esc(k)+'</div><button class="x" data-unrule="'+esc(k)+'" aria-label="Forget this">×</button><div class="m">'+esc(S.rules[k].c)+(S.rules[k].p?' · '+esc(S.rules[k].p):'')+(S.rules[k].w==='H'?' · Holdiit':'')+'</div></div>').join('')+'</div>':'<div class="empty">Nothing learned yet.</div>')+'</div>'+
-  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 4. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
+  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 5. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
 }
 
 
@@ -364,15 +346,38 @@ function viewSavings(){
 /* ---------- checklist typing (like Notes) ---------- */
 const CK='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
 const PH=['25 4g','8000 cerelac','110 aed dinner','yesterday 40 fuel'];
-function rowsHtml(){return S.rows.map((r,i)=>'<div class="ckr'+(r.c?' on':'')+'"><button type="button" class="ckb" data-ck="'+i+'" aria-pressed="'+(!!r.c)+'" aria-label="Money received">'+CK+'</button><input class="ckt" data-ln="'+i+'" value="'+esc(r.t)+'" placeholder="'+(i<PH.length?PH[i]:'')+'" autocomplete="off" autocapitalize="off" enterkeyhint="next"></div>').join('')}
+function rowsHtml(){return S.rows.map((r,i)=>{const ch=chipFor(r);return '<div class="ckr'+(r.c?' on':'')+'"><button type="button" class="ckb" data-ck="'+i+'" aria-pressed="'+(!!r.c)+'" aria-label="Money received">'+CK+'</button><div class="ckm"><input class="ckt" data-ln="'+i+'" value="'+esc(r.t)+'" placeholder="'+(i<PH.length?PH[i]:'')+'" autocomplete="off" autocapitalize="off" enterkeyhint="done"><div class="ckc'+(ch.warn?' warn':'')+'" data-chip="'+i+'">'+ch.h+'</div></div></div>'}).join('')}
+function chipFor(r){
+  if(!r.t.trim())return {h:''};
+  const x=readLine((r.c?'✓ ':'')+r.t,S.baseDate||today());if(!x)return {h:''};
+  const dt=x.d!==(S.baseDate||today())?' · '+new Date(x.d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'';
+  if(x.kind==='job')return {h:'<b>'+(x.exists?'Job budget':'New job')+'</b> · '+esc(x.name||'?')+(x.a!==null?' · '+money(x.a):'')+dt};
+  if(!x.a)return {h:'Add an amount',warn:true};
+  const w=x.w==='H'?'<span class="pill h">Holdiit</span> ':x.w==='S'?'<span class="pill s">Savings'+(x.q?' · '+x.q+' oz':'')+'</span> ':'';
+  return {h:w+'<b class="'+(x.t==='in'?'cin':'')+'">'+(x.t==='in'?'+':'')+money(x.a)+'</b> · '+esc(x.c)+(x.p?' · '+esc(x.p):'')+dt,warn:x.flag};
+}
+function refreshChips(){document.querySelectorAll('.ckc[data-chip]').forEach(el=>{const r=S.rows[+el.dataset.chip];if(!r)return;const ch=chipFor(r);el.innerHTML=ch.h;el.classList.toggle('warn',!!ch.warn)})}
+function commitRow(r){
+  if(!r.t.trim())return null;const x=readLine((r.c?'✓ ':'')+r.t,S.baseDate||today());if(!x)return null;
+  if(x.kind==='job'){if(!x.name)return null;const ex=findProject(x.name);if(ex){if(x.a!==null)ex.budget=x.a}else S.projects.push({name:x.name,date:x.d,budget:x.a,due:null,w:'E'});persist('meta/projects');return 'job '+x.name}
+  if(!x.a)return null;
+  const n={i:uuid(),d:x.d,t:x.t,c:x.c,n:x.n,a:Math.round(x.a*100)/100,w:x.w};if(x.w==='S'&&x.c==='Gold'&&x.q)n.q=x.q;if(x.w==='E'&&x.p){n.p=x.p;ensureProject(x.p,x.d,'E')}
+  addEntry(n);return (n.t==='in'?'+':'')+money(n.a)+' '+n.c;
+}
+function afterCommit(msg,focusIdx){if(!S.rows.length)S.rows=[{t:'',c:false}];saveRows();render();toast(msg);setTimeout(()=>focusRow(Math.min(focusIdx,S.rows.length-1),true),30)}
+function commitAll(){let n=0,last='';S.rows=S.rows.filter(r=>{const res=commitRow(r);if(res){n++;last=res;return false}return true});
+  if(!n){toast('Type an amount and what it is');const f=document.querySelector('.ckt');f&&f.focus();return}
+  if(!S.rows.some(r=>!r.t.trim()))S.rows.push({t:'',c:false});afterCommit(n>1?n+' saved':'Saved · '+last,S.rows.length-1)}
 function saveRows(){try{localStorage.setItem('em-rows',JSON.stringify(S.rows))}catch(e){}}
 function focusRow(i,end){const el=document.querySelector('.ckt[data-ln="'+i+'"]');if(el){el.focus();if(end){const n=el.value.length;el.setSelectionRange(n,n)}else el.setSelectionRange(0,0)}}
 function bindRows2(){
   const q=$('#quick');if(!q||q.dataset.b)return;q.dataset.b=1;
-  q.addEventListener('click',ev=>{const b=ev.target.closest('.ckb');if(!b)return;const i=+b.dataset.ck;S.rows[i].c=!S.rows[i].c;b.setAttribute('aria-pressed',S.rows[i].c);b.parentElement.classList.toggle('on',S.rows[i].c);saveRows();const inp=b.parentElement.querySelector('.ckt');if(inp&&!inp.value)inp.focus()});
-  q.addEventListener('input',ev=>{const el=ev.target.closest('.ckt');if(!el)return;S.rows[+el.dataset.ln].t=el.value;saveRows()});
+  q.addEventListener('click',ev=>{const b=ev.target.closest('.ckb');if(!b)return;const i=+b.dataset.ck;S.rows[i].c=!S.rows[i].c;b.setAttribute('aria-pressed',S.rows[i].c);b.parentElement.classList.toggle('on',S.rows[i].c);saveRows();refreshChips();const inp=b.parentElement.querySelector('.ckt');if(inp&&!inp.value)inp.focus()});
+  q.addEventListener('input',ev=>{const el=ev.target.closest('.ckt');if(!el)return;const i=+el.dataset.ln;S.rows[i].t=el.value;saveRows();const c=q.querySelector('.ckc[data-chip="'+i+'"]');if(c){const ch=chipFor(S.rows[i]);c.innerHTML=ch.h;c.classList.toggle('warn',!!ch.warn)}});
   q.addEventListener('keydown',ev=>{const el=ev.target.closest('.ckt');if(!el)return;const i=+el.dataset.ln;
-    if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();const pos=el.selectionStart;const r=S.rows[i];const tail=r.t.slice(pos);r.t=r.t.slice(0,pos);S.rows.splice(i+1,0,{t:tail,c:false});saveRows();q.innerHTML=rowsHtml();focusRow(i+1,false)}
+    if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();
+      const res=commitRow(S.rows[i]);if(res){S.rows.splice(i,1);if(!S.rows.some(r=>!r.t.trim()))S.rows.push({t:'',c:false});afterCommit('Saved · '+res,S.rows.findIndex(r=>!r.t.trim()));return}
+      const pos=el.selectionStart;const r=S.rows[i];const tail=r.t.slice(pos);r.t=r.t.slice(0,pos);S.rows.splice(i+1,0,{t:tail,c:false});saveRows();q.innerHTML=rowsHtml();focusRow(i+1,false)}
     else if(ev.key==='Backspace'&&el.selectionStart===0&&el.selectionEnd===0&&i>0){ev.preventDefault();const prev=S.rows[i-1];const n=prev.t.length;prev.t+=S.rows[i].t;S.rows.splice(i,1);saveRows();q.innerHTML=rowsHtml();const pe=document.querySelector('.ckt[data-ln="'+(i-1)+'"]');if(pe){pe.focus();pe.setSelectionRange(n,n)}}
     else if(ev.key==='ArrowDown'&&i<S.rows.length-1){ev.preventDefault();focusRow(i+1,true)}
     else if(ev.key==='ArrowUp'&&i>0){ev.preventDefault();focusRow(i-1,true)}});
@@ -435,31 +440,13 @@ function learn(e,orig){
 function bind(){
   const v=S.view;
   if(v==='add'){
-    const q=$('#quick');bindRows2();
-    $('#baseDate').onchange=e=>{S.baseDate=e.target.value};
-    $('#readBtn').onclick=()=>{const base=$('#baseDate').value||today();const lines=S.rows.filter(r=>r.t.trim()).map(r=>readLine((r.c?'✓ ':'')+r.t,base)).filter(Boolean);
-      if(!lines.length){const f=q.querySelector('.ckt');f&&f.focus();return}S.preview=lines.map(l=>({...l,orig:{c:l.c,p:l.p,w:l.w}}));S.rows=[{t:'',c:false}];saveRows();render()};
+    bindRows2();
+    $('#baseDate').onchange=e=>{S.baseDate=e.target.value;refreshChips()};
+    $('#saveRows').onclick=()=>{commitAll()};
     const mic=$('#micBtn');if(mic)mic.onclick=()=>{
       if(mic.classList.contains('on')){dict.stop().catch(()=>{});return}
       dict.start().catch(err=>{if(err&&err.code==='not_granted')mic.remove()});
     };
-    document.querySelectorAll('.jpv [data-j]').forEach(el=>{const e=S.preview[+el.closest('.jpv').dataset.i];el.onchange=()=>{const f=el.dataset.j;e[f]=f==='a'?(el.value===''?null:+el.value):el.value;if(f==='name')e.exists=!!findProject(e.name)}});
-    document.querySelectorAll('.pv:not(.jpv)').forEach(card=>{const i=+card.dataset.i,e=S.preview[i];
-      card.querySelectorAll('[data-f]').forEach(el=>{const f=el.dataset.f;
-        if(el.tagName==='BUTTON')el.onclick=()=>{e[f]=el.dataset.val;if(f==='t'||f==='w'){const cats=e.w==='S'?S_CATS:e.w==='H'?(e.t==='in'?H_IN:H_OUT):(e.t==='in'?E_IN:[...E_JOB,...E_EXP]);if(e.w!=='E')e.p='';if(!cats.includes(e.c))e.c=e.w==='S'?'Gold':e.w==='H'?(e.t==='in'?'Sales':'Other'):(e.t==='in'?(e.p?'Project payment':'Other income'):(e.p?'Extra cost':'Miscellaneous'))}e.flag=false;render()};
-        else el.onchange=()=>{let val=el.value;
-          if(f==='p'&&val==='__new'){newProjectSheet(n=>{e.p=n;if(e.t==='in')e.c='Project payment';else if(!E_JOB.includes(e.c))e.c='Extra cost';e.flag=false;setView('add')});return}
-          e[f]=f==='a'?(+val||0):f==='q'?(val===''?null:+val):val;
-          if(f==='p'){if(val&&e.t==='in')e.c='Project payment';else if(val&&!E_JOB.includes(e.c))e.c='Extra cost';else if(!val&&E_JOB.includes(e.c)&&e.c!=='Team cost')e.c='Miscellaneous';e.flag=false;render()}
-          if(f==='c'){e.flag=false;card.classList.remove('flag')}}});
-    });
-    document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.preview.splice(+b.dataset.del,1);render()});
-    const sa=$('#saveAll');if(sa)sa.onclick=()=>{for(const e of S.preview){if(e.kind==='job'){if(!e.name)continue;const ex=findProject(e.name);if(ex){if(e.a!==null)ex.budget=e.a;}else S.projects.push({name:e.name,date:e.d,budget:e.a,due:null,w:'E'});persist('meta/projects');continue}if(!e.a)continue;
-      const n={i:rid(),d:e.d,t:e.t,c:e.c,n:e.n,a:Math.round(e.a*100)/100,w:e.w};if(e.w==='S'&&e.c==='Gold'&&e.q)n.q=e.q;if(e.w==='E'&&e.p){n.p=e.p;ensureProject(e.p,e.d,'E')}
-      addEntry(n);learn(n,e.orig)}
-      const c=S.preview.length;S.preview=[];render();toast(c+' saved')};
-    const cp=$('#clearPv');if(cp)cp.onclick=()=>{S.preview=[];render()};
-    const ac=$('#askClaude');if(ac)ac.onclick=askClaude;
   }
   if(v==='month'){
     $('#prevM').onclick=()=>{S.ym=shiftYm(S.ym,-1);render()};$('#nextM').onclick=()=>{S.ym=shiftYm(S.ym,1);render()};
