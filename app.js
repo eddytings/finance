@@ -1,8 +1,8 @@
 "use strict";
 /* ---------- constants ---------- */
-const E_IN=['Project payment','Other income'];
+const E_IN=['Project payment','Holdiit sales','Other income'];
 const E_JOB=['Team cost','Rental cost','Extra cost'];
-const E_EXP=['Salaries','Office','Home','Car & Fuel','Food (personal)','Subscriptions & AI','Family','Insurance','Dubai','Health','Equipment','Travel','Education','Entertainment','Miscellaneous'];
+const E_EXP=['Salaries','Office','Home','Car & Fuel','Food (personal)','Subscriptions & AI','Family','Insurance','Dubai','Health','Equipment','Travel','Education','Entertainment','Holdiit','Miscellaneous'];
 const H_IN=['Sales','Other income'];
 const H_OUT=['Stock & supplier','Branding & design','Packaging','Marketing & ads','Shipping & delivery','Website & tools','Equipment & props','Other'];
 const CREW=['mike','joe','samira','sayed','elissa','jimmy','jaafar','sam','adrielle','crew','freelancer','editor','dop','gaffer','assistant'];
@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=26;
+const APPV=27;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -379,7 +379,7 @@ function readTyped(r){
     x.c=tick?'Project payment':(E_JOB.includes(x.c)?x.c:(CREW.some(kk=>hasWord(desc,kk))?'Team cost':/\brent(al)?\b/.test(desc)?'Rental cost':'Extra cost'));
     x.flag=!x.p}
   if(k==='save'){x.w='S';x.p='';x.c=GOLDW.test(desc)?'Gold':'Cash savings';x.flag=false;x.t=tick?'out':'in';x.q=x.c==='Gold'?x.q:null}
-  if(k==='hold'){x.w='H';x.p='';x.c=tick?'Sales':(H_KW.find(([,ks])=>ks.some(kk=>hasWord(desc,kk)))||['Other'])[0];x.flag=false}
+  if(k==='hold'){x.w='E';x.p='';x.c=tick?'Holdiit sales':'Holdiit';x.flag=false}
   if(k.startsWith('c:')){x.w='E';x.p='';x.c=k.slice(2);x.flag=false}
   return goldOz(x);
 }
@@ -432,7 +432,7 @@ function editEntry(id){
   openSheet('<div class="row between"><h3>Edit entry</h3><button class="x" id="sx" aria-label="Close">×</button></div><div class="form" style="margin-top:12px">'+
    '<label>Amount ($)<input id="eA" type="number" step="0.01" inputmode="decimal" value="'+e.a+'"></label><label>Date<input id="eD" type="date" value="'+e.d+'"></label>'+
    '<label>In / out<select id="eT"><option value="out"'+(e.t==='out'?' selected':'')+'>Out</option><option value="in"'+(e.t==='in'?' selected':'')+'>In</option></select></label>'+
-   '<label>Wallet<select id="eW"><option value="E"'+((e.w||'E')==='E'?' selected':'')+'>eddytings</option><option value="H"'+(e.w==='H'?' selected':'')+'>Holdiit</option><option value="S"'+(e.w==='S'?' selected':'')+'>Savings</option></select></label>'+
+   '<label>Wallet<select id="eW"><option value="E"'+((e.w||'E')==='E'?' selected':'')+'>eddytings</option><option value="S"'+(e.w==='S'?' selected':'')+'>Savings</option></select></label>'+
    '<label class="full">Category<select id="eC">'+catOptions(e.w||'E',e.t,e.c)+'</select></label>'+
    '<label class="full">Project<select id="eP">'+projOptions(e.p,true)+'</select></label>'+
    '<label class="full">Description<input id="eN" type="text" value="'+esc(e.n==='no description'?'':e.n)+'"></label><label class="full">Gold ounces (savings only)<input id="eQ" type="number" step="0.01" inputmode="decimal" value="'+(e.q??'')+'"></label></div>'+
@@ -601,7 +601,7 @@ function lockView(){
 }
 function openApp(){
   refreshGold();
-  document.querySelector('nav.tabs').style.display='';$('#walletSeg').style.visibility='';
+  document.querySelector('nav.tabs').style.display='';
   cacheLoad();route();setSync();sync();
 }
 function startApp(){if(bioOn()){lockView();return}openApp()}
@@ -609,7 +609,7 @@ async function signOut(){if(pending()&&!confirmTwice())return;await sb.auth.sign
 function confirmTwice(){const b=$('#signOutBtn');if(b&&!b.dataset.sure){b.dataset.sure=1;b.textContent='Changes not synced yet – tap again to sign out anyway';return false}return true}
 
 /* ---------- wiring ---------- */
-$('#wE').onclick=()=>{S.wallet='E';render()};$('#wH').onclick=()=>{S.wallet='H';render()};
+S.wallet='E';$('#walletSeg').style.display='none';
 function route(){if(!session||S.locked)return;const h=(location.hash||'#add').slice(1);setView(['add','month','jobs','savings','year','more'].includes(h)?h:'add')}
 window.addEventListener('hashchange',route);
 try{S.rows=JSON.parse(localStorage.getItem('em-rows')||'null')}catch(e){}if(!Array.isArray(S.rows)||!S.rows.length)S.rows=[{t:'',c:false}];
