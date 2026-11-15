@@ -157,6 +157,12 @@ function parseDate(t,base){
 }
 function readLine(raw,base){
   let t=lc(raw).trim();if(!t)return null;
+  const jm=raw.trim().match(/^(?:new\s+)?(?:job|project|booked)\s*[:\-]?\s+(.*)$/i);
+  if(jm){let rest=jm[1];const pdj=parseDate(lc(rest),base);rest=rest.replace(/\b(yesterday|today)\b/ig,' ').replace(/\b\d{1,2}\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b/ig,' ');const am=rest.match(/\$?\s*(\d[\d,]*(?:\.\d+)?)\s*(k\b)?\s*\$?/i);let a=null;
+    if(am){a=parseFloat(am[1].replace(/,/g,''))*(am[2]?1000:1);rest=rest.replace(am[0],' ')}
+    rest=rest.replace(/\b(yesterday|today)\b/ig,' ').replace(/\b\d{1,2}\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\b/ig,' ').replace(/\s+/g,' ').trim();
+    const name=rest.replace(/\b\w/g,c=>c.toUpperCase());
+    return {kind:'job',raw:raw.trim(),d:pdj.d,name,a,exists:!!findProject(name)}}
   let dir=null;
   if(/^[✓✔+]/.test(t)||/\b(received|got paid|paid me|collected|payment from|income)\b/.test(t))dir='in';
   if(/^[-◦•]/.test(t))dir=dir||'out';
@@ -229,12 +235,16 @@ function groupedList(es){
   for(const e of es){if(e.d!==last){last=e.d;const dt=new Date(e.d+'T12:00');h+='<div class="day">'+dt.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+'</div>'}h+=entryRow(e)}
   return '<div class="list">'+h+'</div>';
 }
+function jobPv(e,i){return '<div class="pv jpv" data-i="'+i+'" style="border-color:var(--accent)"><div class="src">'+esc(e.raw)+'</div>'+
+  '<div style="grid-column:1/-1;font-weight:600">'+(e.exists?'Update job budget':'New job')+'</div>'+
+  '<div class="f"><input type="text" data-j="name" aria-label="Job name" value="'+esc(e.name)+'" placeholder="Job name"><input type="number" inputmode="decimal" data-j="a" aria-label="Budget" placeholder="Budget $" value="'+(e.a??'')+'">'+
+  '<input type="date" data-j="d" aria-label="Shoot date" value="'+e.d+'"><button class="x" data-del="'+i+'" aria-label="Remove this line">×</button></div></div>'}
 function viewAdd(){
   const recent=allEntries().map((e,ix)=>[e,ix]).sort((a,b)=>a[0].d<b[0].d?1:a[0].d>b[0].d?-1:b[1]-a[1]).slice(0,30).map(x=>x[0]);
   const pv=S.preview;
   let pvh='';
   if(pv.length){
-    pvh='<h2>Check before saving</h2><div class="stack">'+pv.map((e,i)=>'<div class="pv'+(e.flag?' flag':'')+'" data-i="'+i+'">'+
+    pvh='<h2>Check before saving</h2><div class="stack">'+pv.map((e,i)=>e.kind==='job'?jobPv(e,i):'<div class="pv'+(e.flag?' flag':'')+'" data-i="'+i+'">'+
       '<div class="src">'+esc(e.raw)+(e.flag?' — <b>check this one</b>':'')+'</div>'+
       '<div class="row" style="grid-column:1/-1;gap:6px;flex-wrap:wrap">'+
         '<input type="number" step="0.01" inputmode="decimal" aria-label="Amount in dollars" class="num" data-f="a" value="'+e.a+'" style="width:110px">'+
@@ -255,7 +265,7 @@ function viewAdd(){
   '<div class="row between" style="flex-wrap:wrap"><div class="row"><input type="date" id="baseDate" value="'+(S.baseDate||today())+'" aria-label="Date for these lines">'+
   (dict?'<button class="btn mic" id="micBtn" aria-label="Speak instead of typing"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>':'')+
   '</div><button class="btn primary" id="readBtn">Read it</button></div>'+
-  '<div class="hint"><code>✓</code> or <code>+</code> at the start = money in · add <code>aed</code> or <code>lbp</code> for other currencies · start with <code>yesterday</code> or <code>12 nov</code> for another day · a project name tags the job · "bags" or "holdiit" goes to Holdiit · "gold", "oz" or "savings" goes to Savings (e.g. <code>4000 gold 1 oz</code>).</div></div>'+
+  '<div class="hint"><code>✓</code> or <code>+</code> at the start = money in · add <code>aed</code> or <code>lbp</code> for other currencies · start with <code>job cerelac 8000</code> adds a job with its budget · <code>yesterday</code> or <code>12 nov</code> for another day · a project name tags the job · "bags" or "holdiit" goes to Holdiit · "gold", "oz" or "savings" goes to Savings (e.g. <code>4000 gold 1 oz</code>).</div></div>'+
   pvh+'</div><div><h2 class="first">Latest</h2><div class="card" style="padding:4px 12px">'+groupedList(recent)+'</div></div></div>';
 }
 function tile(l,v,s,cls){return '<div class="tile '+(cls||'')+'"><span class="l">'+l+'</span><span class="v">'+v+'</span>'+(s?'<span class="s">'+s+'</span>':'')+'</div>'}
@@ -265,11 +275,11 @@ function bars(byCat,w){
   return '<div class="bars">'+arr.map(([c,v])=>'<div class="b"><span>'+esc(c)+'</span><div class="track"><div class="fill'+(w==='S'?' s':w==='H'?' h':E_JOB.includes(c)?' job':'')+'" style="width:'+Math.max(2,v/max*100)+'%"></div></div><span class="amt">'+money(v)+'</span></div>').join('')+'</div>';
 }
 function jobCard(p){
-  const s=projStats(p);const late=s.owed>0&&p.due&&p.due<today();
-  return '<div class="job" data-proj="'+esc(p.name)+'"><div class="nm">'+esc(p.name)+'</div><div class="amt'+(s.profit<0?'':'')+'" style="color:'+(s.profit<0?'var(--bad)':'var(--ink)')+'">'+money(s.profit)+'</div>'+
+  const s=projStats(p);const unpaid=s.owed>0;
+  return '<div class="job'+(unpaid?' unpaid':'')+'" data-proj="'+esc(p.name)+'"><div class="nm">'+esc(p.name)+'</div><div class="amt'+(s.profit<0?'':'')+'" style="color:'+(s.profit<0?'var(--bad)':'var(--ink)')+'">'+money(s.profit)+'</div>'+
   '<div class="meta"><span>'+new Date(p.date+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</span>'+
   '<span>Budget <b>'+(s.hasB?money(p.budget):'—')+'</b></span><span>Cost <b>'+money(s.cost)+'</b></span><span>Received <b>'+money(s.rec)+'</b></span>'+
-  (s.owed>0?'<span class="pill '+(late?'late':'owe')+'">'+(late?'Late · ':'Owes ')+money(s.owed)+(p.due&&!late?' by '+new Date(p.due+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'}):'')+'</span>':'')+
+  (unpaid?'<span class="pill late">Not fully paid · owes '+money(s.owed)+'</span>':(s.hasB&&s.rec>0?'<span class="pill in">Paid</span>':''))+
   (!s.hasB?'<span class="pill owe">Add budget</span>':'')+'</div></div>';
 }
 function pageHead(t,lead,right){return '<div class="phead"><div><h1>'+t+'</h1><p class="lead">'+lead+'</p></div>'+(right||'')+'</div>'}
@@ -294,7 +304,7 @@ function yearHoldiit(){let t=0;const y=S.ym.slice(0,4);for(const k in S.months)i
 function viewJobs(){
   if(S.wallet==='H')return '<div class="card empty">Jobs are for eddytings work. Switch to eddytings at the top.</div>';
   const ps=S.projects.filter(p=>(p.w||'E')==='E');
-  const owed=ps.map(p=>[p,projStats(p)]).filter(([,s])=>s.owed>0).sort((a,b)=>(a[0].due||'9')<(b[0].due||'9')?-1:1);
+  const owed=ps.map(p=>[p,projStats(p)]).filter(([,s])=>s.owed>0).sort((a,b)=>(a[0].date||'')<(b[0].date||'')?-1:1);
   const noB=ps.filter(p=>!projStats(p).hasB).length;
   let h=pageHead('Jobs','Every job, what it cost, what you made, and who still owes you.','<button class="btn primary" id="newJob">+ New job</button>')+
   '<div class="hero">'+tile('Clients owe you',money(totalOwed()),owed.length+' job'+(owed.length===1?'':'s')+' not fully paid','big')+tile('Missing budget',noB,'add them so "owes you" is right','big')+'</div>';
@@ -372,20 +382,20 @@ function editEntry(id){
 function newProjectSheet(after){
   openSheet('<div class="row between"><h3>New job</h3><button class="x" id="sx" aria-label="Close">×</button></div><div class="form" style="margin-top:12px">'+
   '<label class="full">Job name<input id="jN" type="text" placeholder="e.g. Cerelac TVC"></label><label>Shoot date<input id="jD" type="date" value="'+today()+'"></label><label>Budget ($)<input id="jB" type="number" inputmode="decimal"></label>'+
-  '<label class="full">When is the rest of the money due?<input id="jDue" type="date"></label></div><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" id="jSave">Add job</button></div>');
+  '</div><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" id="jSave">Add job</button></div>');
   $('#jSave').onclick=()=>{const n=$('#jN').value.trim();if(!n){$('#jN').focus();return}
     if(findProject(n)){toast('A job with that name already exists');return}
-    S.projects.push({name:n,date:$('#jD').value||today(),budget:$('#jB').value===''?null:+$('#jB').value,due:$('#jDue').value||null,w:'E'});persist('meta/projects');closeSheet();if(after)after(n);else render();toast('Job added')};
+    S.projects.push({name:n,date:$('#jD').value||today(),budget:$('#jB').value===''?null:+$('#jB').value,due:null,w:'E'});persist('meta/projects');closeSheet();if(after)after(n);else render();toast('Job added')};
 }
 function editProject(name){
   const p=findProject(name);if(!p)return;const s=projStats(p);
   openSheet('<div class="row between"><h3>'+esc(p.name)+'</h3><button class="x" id="sx" aria-label="Close">×</button></div>'+
   '<div class="grid3" style="margin:12px 0">'+tile('Received',money(s.rec))+tile('Costs',money(s.cost))+tile('Net profit',money(s.profit),'',s.profit<0?'neg':'pos')+'</div>'+
   '<div class="form"><label>Shoot date<input id="pD" type="date" value="'+(p.date||'')+'"></label><label>Budget ($)<input id="pB" type="number" inputmode="decimal" value="'+(p.budget??'')+'"></label>'+
-  '<label class="full">When is the rest due?<input id="pDue" type="date" value="'+(p.due||'')+'"></label></div>'+
+  '</div>'+
   '<h2>Money for this job</h2><div class="list">'+(allEntries().filter(e=>lc(e.p)===lc(p.name)).sort((a,b)=>a.d<b.d?-1:1).map(e=>'<div class="it" style="cursor:default"><div class="t">'+esc(e.n)+' <span class="muted small">'+e.d.slice(5)+'</span></div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'?'+':'')+money(e.a)+'</div><div class="m">'+esc(e.c)+'</div></div>').join('')||'<div class="empty">No money tagged yet.</div>')+'</div>'+
   '<div class="row between" style="margin-top:16px"><button class="btn" id="pDel" style="color:var(--bad)">Delete job</button><button class="btn primary" id="pSave">Save</button></div>');
-  $('#pSave').onclick=()=>{p.date=$('#pD').value||p.date;p.budget=$('#pB').value===''?null:+$('#pB').value;p.due=$('#pDue').value||null;persist('meta/projects');closeSheet();render();toast('Saved')};
+  $('#pSave').onclick=()=>{p.date=$('#pD').value||p.date;p.budget=$('#pB').value===''?null:+$('#pB').value;persist('meta/projects');closeSheet();render();toast('Saved')};
   $('#pDel').onclick=()=>{if($('#pDel').dataset.sure){S.projects=S.projects.filter(x=>x!==p);persist('meta/projects');closeSheet();render();toast('Job deleted – its entries stay')}else{$('#pDel').dataset.sure=1;$('#pDel').textContent='Tap again to delete'}};
 }
 function bindSheet(){const x=$('#sx');if(x)x.onclick=closeSheet}
@@ -411,7 +421,8 @@ function bind(){
       if(mic.classList.contains('on')){dict.stop().catch(()=>{});return}
       dict.start().catch(err=>{if(err&&err.code==='not_granted')mic.remove()});
     };
-    document.querySelectorAll('.pv').forEach(card=>{const i=+card.dataset.i,e=S.preview[i];
+    document.querySelectorAll('.jpv [data-j]').forEach(el=>{const e=S.preview[+el.closest('.jpv').dataset.i];el.onchange=()=>{const f=el.dataset.j;e[f]=f==='a'?(el.value===''?null:+el.value):el.value;if(f==='name')e.exists=!!findProject(e.name)}});
+    document.querySelectorAll('.pv:not(.jpv)').forEach(card=>{const i=+card.dataset.i,e=S.preview[i];
       card.querySelectorAll('[data-f]').forEach(el=>{const f=el.dataset.f;
         if(el.tagName==='BUTTON')el.onclick=()=>{e[f]=el.dataset.val;if(f==='t'||f==='w'){const cats=e.w==='S'?S_CATS:e.w==='H'?(e.t==='in'?H_IN:H_OUT):(e.t==='in'?E_IN:[...E_JOB,...E_EXP]);if(e.w!=='E')e.p='';if(!cats.includes(e.c))e.c=e.w==='S'?'Gold':e.w==='H'?(e.t==='in'?'Sales':'Other'):(e.t==='in'?(e.p?'Project payment':'Other income'):(e.p?'Extra cost':'Miscellaneous'))}e.flag=false;render()};
         else el.onchange=()=>{let val=el.value;
@@ -421,7 +432,7 @@ function bind(){
           if(f==='c'){e.flag=false;card.classList.remove('flag')}}});
     });
     document.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{S.preview.splice(+b.dataset.del,1);render()});
-    const sa=$('#saveAll');if(sa)sa.onclick=()=>{for(const e of S.preview){if(!e.a)continue;
+    const sa=$('#saveAll');if(sa)sa.onclick=()=>{for(const e of S.preview){if(e.kind==='job'){if(!e.name)continue;const ex=findProject(e.name);if(ex){if(e.a!==null)ex.budget=e.a;}else S.projects.push({name:e.name,date:e.d,budget:e.a,due:null,w:'E'});persist('meta/projects');continue}if(!e.a)continue;
       const n={i:rid(),d:e.d,t:e.t,c:e.c,n:e.n,a:Math.round(e.a*100)/100,w:e.w};if(e.w==='S'&&e.c==='Gold'&&e.q)n.q=e.q;if(e.w==='E'&&e.p){n.p=e.p;ensureProject(e.p,e.d,'E')}
       addEntry(n);learn(n,e.orig)}
       const c=S.preview.length;S.preview=[];render();toast(c+' saved')};
@@ -477,7 +488,7 @@ async function askClaude(){
 async function exportXlsx(){
   if(!window.XLSX){toast('Excel tool still loading – try again');return}
   const log=allEntries().sort((a,b)=>a.d<b.d?-1:1).map(e=>({Date:e.d,Wallet:e.w==='S'?'Savings':(e.w||'E')==='H'?'Holdiit':'eddytings','In/Out':e.t==='in'?'In':'Out',Category:e.c,Description:e.n,Project:e.p||'',Amount:e.a,'Gold oz':e.q||''}));
-  const jobs=S.projects.map(p=>{const s=projStats(p);return {Job:p.name,'Shoot date':p.date,Budget:p.budget??'','Team cost':s.team,'Rental cost':s.rent,'Extra cost':s.extra,'Total cost':s.cost,Received:s.rec,'Still to receive':s.owed,'Rest due':p.due||'','Net profit':s.profit}});
+  const jobs=S.projects.map(p=>{const s=projStats(p);return {Job:p.name,'Shoot date':p.date,Budget:p.budget??'','Team cost':s.team,'Rental cost':s.rent,'Extra cost':s.extra,'Total cost':s.cost,Received:s.rec,'Still to receive':s.owed,'Net profit':s.profit}});
   const months=[];const ys=new Set(Object.keys(S.months).map(k=>k.slice(0,4)));
   for(const y of [...ys].sort())for(let m=1;m<=12;m++){const ym=y+'-'+String(m).padStart(2,'0');const s=monthSummary(ym,'E');const h=monthSummary(ym,'H');
     if(!s.es.length&&!h.es.length&&!s.jobs.length)continue;
