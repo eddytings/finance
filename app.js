@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=35;
+const APPV=36;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -300,13 +300,14 @@ function viewJobs(){
   const owed=ps.map(p=>[p,projStats(p)]).filter(([,s])=>s.owed>0||(!s.hasB&&s.rec<=0)).sort((a,b)=>(a[0].date||'')<(b[0].date||'')?-1:1);
   const noB=ps.filter(p=>!projStats(p).hasB).length;
   let h=pageHead('Jobs','Every job, what it cost, what you made, and who still owes you.','<button class="btn primary" id="newJob">+ New job</button>')+
+  '<input id="jSearch" class="jsearch" type="search" placeholder="Search jobs…" autocomplete="off"><div id="jRes"></div><div id="jAll">'+
   '<div class="hero" style="grid-template-columns:1fr">'+tile('Clients owe you',money(totalOwed()),(()=>{const np=owed.filter(([,x])=>!x.hasB).length;return owed.length+' job'+(owed.length===1?'':'s')+' waiting'+(np?' · '+np+' without a price yet':'')})(),'big')+'</div>';
   if(owed.length)h+='<h2 class="wait">Waiting for money</h2><div class="card" style="padding:4px 12px">'+owed.map(([p])=>jobCard(p)).join('')+'</div>';
   const by={};for(const p of ps){const k=(p.date||'').slice(0,7);(by[k]=by[k]||[]).push(p)}
   for(const k of Object.keys(by).sort().reverse()){const [y,m]=k.split('-').map(Number);const list=by[k].sort((a,b)=>a.date<b.date?-1:1);
     let tot=0,prof=0;for(const p of list){const s=projStats(p);tot+=s.value;prof+=s.profit}
     h+='<h2>'+MONTHS[m-1]+' '+y+' · '+list.length+' job'+(list.length===1?'':'s')+' · '+money(tot)+' · profit '+money(prof)+'</h2><div class="card" style="padding:4px 12px">'+list.map(jobCard).join('')+'</div>'}
-  return h;
+  return h+'</div>';
 }
 function viewYear(){
   const y=S.ym.slice(0,4),w=S.wallet;let rows='',T={rev:0,prof:0,rec:0,sp:0,cash:0};const cash=[];
@@ -496,7 +497,12 @@ function bind(){
     const ms=$('#mSearch');if(ms)ms.oninput=()=>{const q=lc(ms.value);const es=monthEntries(S.ym,S.wallet).filter(e=>!q||lc(e.n+' '+e.c+' '+(e.p||'')).includes(q)).reverse();$('#mList').innerHTML=groupedList(es);bindRows()};
   }
   if(v==='savings'){const gp=$('#goldPx2');if(gp)gp.onchange=e=>{S.settings.gold=+e.target.value||null;persist('meta/settings');render()}}
-  if(v==='jobs'){const nj=$('#newJob');if(nj)nj.onclick=()=>newProjectSheet()}
+  if(v==='jobs'){const nj=$('#newJob');if(nj)nj.onclick=()=>newProjectSheet();
+    const js=$('#jSearch');if(js)js.oninput=()=>{const q=lc(js.value).trim();$('#jAll').style.display=q?'none':'';
+      if(!q){$('#jRes').innerHTML='';return}
+      const ps=S.projects.filter(p=>(p.w||'E')==='E'&&(lc(p.name).includes(q)||allEntries().some(e=>e.p===p.name&&lc(e.n||'').includes(q)))).sort((a,b)=>(a.date||'')<(b.date||'')?1:-1);
+      $('#jRes').innerHTML=ps.length?'<h2>'+ps.length+' job'+(ps.length===1?'':'s')+' found</h2><div class="card" style="padding:4px 12px">'+ps.map(jobCard).join('')+'</div>':'<div class="card empty" style="margin-top:12px">No job matches "'+esc(js.value)+'".</div>';
+      $('#jRes').querySelectorAll('[data-proj]').forEach(r=>r.onclick=()=>editProject(r.dataset.proj))}}
   if(v==='year'){$('#prevY').onclick=()=>{S.ym=(+S.ym.slice(0,4)-1)+S.ym.slice(4);render()};$('#nextY').onclick=()=>{S.ym=(+S.ym.slice(0,4)+1)+S.ym.slice(4);render()};
     document.querySelectorAll('tr[data-ym]').forEach(r=>r.onclick=()=>{S.ym=r.dataset.ym;location.hash='month'})}
   if(v==='more'){
@@ -659,7 +665,7 @@ function setKind(k){S.kind=k;try{localStorage.setItem('em-kind',k)}catch(e){}
   document.querySelectorAll('[data-kind]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.kind===k))}
 
 /* layout fixes applied from here too, so they show even if the page itself is cached */
-(function(){const st=document.createElement('style');st.textContent='.ckt,.ckt:focus,.ckt:focus-visible{outline:none!important;box-shadow:none!important}.ckc{margin-top:6px!important;padding-bottom:12px!important;font-size:13px}.eq{margin-top:10px;display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}.eq>div{display:flex;flex-direction:column;gap:2px;min-width:0}.eq .l{font-size:12px;color:var(--muted);line-height:1.2}.eq .v{font:700 17px var(--f-num);color:var(--ink)}.eq>b{font-size:20px;color:var(--muted);font-weight:600}.eq .tot .v{color:var(--bad)}.mpick{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}.mpick span{font-size:.6em;color:var(--muted);vertical-align:middle}.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}.mgrid button{padding:16px 0;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;font-weight:600;cursor:pointer}.mgrid button.now{border-color:var(--accent)}.mgrid button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.bars .b[data-cat]{cursor:pointer;border-radius:8px}.bars .b[data-cat]:active{background:var(--bg)}.chev{font-style:normal;color:var(--muted)}.cseg{margin-top:12px;display:flex}.cseg button{flex:1;border:0;background:none;color:var(--muted);padding:8px;border-radius:999px;font-weight:600;cursor:pointer}.cseg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}h4.ch{margin:18px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}.tile,.eq>div{cursor:pointer}h2.wait{background:#6e0f24!important;color:#fff!important;font-weight:800;letter-spacing:.08em;box-shadow:0 0 0 1px #8f1a33}';document.head.appendChild(st)})();
+(function(){const st=document.createElement('style');st.textContent='.ckt,.ckt:focus,.ckt:focus-visible{outline:none!important;box-shadow:none!important}.ckc{margin-top:6px!important;padding-bottom:12px!important;font-size:13px}.eq{margin-top:10px;display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}.eq>div{display:flex;flex-direction:column;gap:2px;min-width:0}.eq .l{font-size:12px;color:var(--muted);line-height:1.2}.eq .v{font:700 17px var(--f-num);color:var(--ink)}.eq>b{font-size:20px;color:var(--muted);font-weight:600}.eq .tot .v{color:var(--bad)}.mpick{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}.mpick span{font-size:.6em;color:var(--muted);vertical-align:middle}.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}.mgrid button{padding:16px 0;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;font-weight:600;cursor:pointer}.mgrid button.now{border-color:var(--accent)}.mgrid button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.bars .b[data-cat]{cursor:pointer;border-radius:8px}.bars .b[data-cat]:active{background:var(--bg)}.chev{font-style:normal;color:var(--muted)}.cseg{margin-top:12px;display:flex}.cseg button{flex:1;border:0;background:none;color:var(--muted);padding:8px;border-radius:999px;font-weight:600;cursor:pointer}.cseg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}h4.ch{margin:18px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}.tile,.eq>div{cursor:pointer}.jsearch{width:100%;margin:14px 0 4px;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px}h2.wait{background:#6e0f24!important;color:#fff!important;font-weight:800;letter-spacing:.08em;box-shadow:0 0 0 1px #8f1a33}';document.head.appendChild(st)})();
 
 function monthPicker(y){
   const cur=S.ym,now=today().slice(0,7);
