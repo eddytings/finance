@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=23;
+const APPV=24;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -114,8 +114,7 @@ async function sync(){
 
 /* ---------- data helpers ---------- */
 // Cash in hand: anchored to the amount you told the app on a given day, then moved by every entry (all wallets).
-function cashAt(x){const c=S.settings.cash;if(!c||c.a===undefined||c.a===null)return null;if(x<c.d&&x.slice(0,7)<c.d.slice(0,7))return null;if(x<c.d)x=c.d;let b=+c.a;
-  for(const e of allEntries()){const v=e.t==='in'?e.a:-e.a;if(e.d>c.d&&e.d<=x)b+=v;else if(e.d>x&&e.d<=c.d)b-=v}return b}
+function cashAt(x){let b=0;for(const e of allEntries())if(e.d<=x)b+=e.t==='in'?e.a:-e.a;return b}
 function monthEndOf(ym){const [y,m]=ym.split('-').map(Number);const d=new Date(Date.UTC(y,m,0)).toISOString().slice(0,10);const t=today();return d>t?t:d}
 function cashTile(ym,s){const v=cashAt(monthEndOf(ym));
   if(v===null)return '<button type="button" class="tile big" id="setCash" style="text-align:left;cursor:pointer"><span class="l">Cash in hand</span><span class="v" style="font-size:20px">Tap to set</span><span class="s">type what you have today</span></button>';
@@ -494,13 +493,13 @@ function bind(){
     document.querySelectorAll('[data-kind]').forEach(b=>b.onclick=()=>{setKind(b.dataset.kind);refreshChips();const f=document.querySelector('.ckt');f&&f.focus()});
   }
   if(v==='month'){
-    {const sc=$('#setCash');if(sc)sc.onclick=cashSheet}
+    
     $('#prevM').onclick=()=>{S.ym=shiftYm(S.ym,-1);render()};$('#pickM').onclick=()=>monthPicker(+S.ym.slice(0,4));$('#nextM').onclick=()=>{S.ym=shiftYm(S.ym,1);render()};
     const ms=$('#mSearch');if(ms)ms.oninput=()=>{const q=lc(ms.value);const es=monthEntries(S.ym,S.wallet).filter(e=>!q||lc(e.n+' '+e.c+' '+(e.p||'')).includes(q)).reverse();$('#mList').innerHTML=groupedList(es);bindRows()};
   }
   if(v==='savings'){const gp=$('#goldPx2');if(gp)gp.onchange=e=>{S.settings.gold=+e.target.value||null;persist('meta/settings');render()}}
   if(v==='jobs'){const nj=$('#newJob');if(nj)nj.onclick=()=>newProjectSheet()}
-  if(v==='year'){{const sc=$('#setCash');if(sc)sc.onclick=cashSheet}$('#prevY').onclick=()=>{S.ym=(+S.ym.slice(0,4)-1)+S.ym.slice(4);render()};$('#nextY').onclick=()=>{S.ym=(+S.ym.slice(0,4)+1)+S.ym.slice(4);render()};
+  if(v==='year'){$('#prevY').onclick=()=>{S.ym=(+S.ym.slice(0,4)-1)+S.ym.slice(4);render()};$('#nextY').onclick=()=>{S.ym=(+S.ym.slice(0,4)+1)+S.ym.slice(4);render()};
     document.querySelectorAll('tr[data-ym]').forEach(r=>r.onclick=()=>{S.ym=r.dataset.ym;location.hash='month'})}
   if(v==='more'){
     const x=$('#xlsxBtn');if(x)x.onclick=exportXlsx;const j=$('#jsonBtn');if(j)j.onclick=exportJson;
