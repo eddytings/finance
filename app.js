@@ -200,7 +200,7 @@ function readLine(raw,base){
     else{const hit=KW.find(([,ks])=>ks.some(k=>hasWord(desc,k)));c=hit?hit[0]:'Miscellaneous';if(!hit)flag=true}
   }
   if(w==='S')p='';
-  return {raw:raw.trim(),d:pd.d,t:dir,a,n:(desc||'no description')+curNote,c,p,w,flag,key,q:w==='S'&&c==='Gold'?q:null};
+  return {raw:raw.trim(),d:pd.d,t:dir,a,n:(desc+curNote).trim(),c,p,w,flag,key,q:w==='S'&&c==='Gold'?q:null};
 }
 
 /* ---------- views ---------- */
@@ -225,10 +225,11 @@ function projOptions(sel,noNew){
   const ps=[...S.projects].filter(p=>(p.w||'E')==='E').sort((a,b)=>a.date<b.date?1:-1);
   return '<option value="">No project</option>'+ps.map(p=>'<option'+(lc(p.name)===lc(sel)?' selected':'')+' value="'+esc(p.name)+'">'+esc(p.name)+'</option>').join('')+(noNew?'':'<option value="__new">+ New project…</option>')+(sel&&!findProject(sel)?'<option selected value="'+esc(sel)+'">'+esc(sel)+' (new)</option>':'');
 }
+const nm=e=>(e.n&&e.n!=='no description')?e.n:e.c;
 function entryRow(e){
   const h=(e.w||'E')==='H';
-  return '<div class="sw"><button class="swdel" data-swdel="'+e.i+'">Delete</button><div class="it" data-edit="'+e.i+'"><div class="t">'+esc(e.n)+'</div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'?'+':'')+money(e.a)+'</div>'+
-  '<div class="m">'+(h?'<span class="pill h">Holdiit</span>':'')+(e.w==='S'?'<span class="pill s">Savings'+(e.q?' · '+e.q+' oz':'')+'</span>':'')+'<span>'+esc(e.c)+'</span>'+(e.p?'<span>· '+esc(e.p)+'</span>':'')+'</div></div></div>';
+  return '<div class="sw"><button class="swdel" data-swdel="'+e.i+'">Delete</button><div class="it" data-edit="'+e.i+'"><div class="t">'+esc(nm(e))+'</div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'?'+':'')+money(e.a)+'</div>'+
+  '<div class="m">'+(h?'<span class="pill h">Holdiit</span>':'')+(e.w==='S'?'<span class="pill s">Savings'+(e.q?' · '+e.q+' oz':'')+'</span>':'')+(nm(e)===e.c?'':'<span>'+esc(e.c)+'</span>')+(e.p?'<span>· '+esc(e.p)+'</span>':'')+'</div></div></div>';
 }
 function groupedList(es){
   if(!es.length)return '<div class="empty">Nothing here yet.</div>';
@@ -323,7 +324,7 @@ function viewMore(){
   '<div class="card stack"><h3>Currencies</h3><div class="form"><label>1 USD in AED<input type="number" step="0.0001" id="rateAed" value="'+S.settings.aed+'"></label><label>1 USD in LBP<input type="number" step="1" id="rateLbp" value="'+S.settings.lbp+'"></label><label class="full">Gold price today ($ per ounce)<input type="number" step="1" id="goldPx" value="'+(S.settings.gold||'')+'"></label></div></div>'+
   '<div class="card stack"><h3>What the app has learned ('+rk.length+')</h3><div class="hint">When you fix a category or project before saving, the app remembers it for next time. Remove one if it learned something wrong.</div>'+
   (rk.length?'<div class="list">'+rk.map(k=>'<div class="it" style="cursor:default"><div class="t">'+esc(k)+'</div><button class="x" data-unrule="'+esc(k)+'" aria-label="Forget this">×</button><div class="m">'+esc(S.rules[k].c)+(S.rules[k].p?' · '+esc(S.rules[k].p):'')+(S.rules[k].w==='H'?' · Holdiit':'')+'</div></div>').join('')+'</div>':'<div class="empty">Nothing learned yet.</div>')+'</div>'+
-  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 10. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
+  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 11. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
 }
 
 
@@ -373,7 +374,7 @@ function readTyped(r){
     else if(!tick&&E_IN.includes(x.c)){x.c=x.p?'Extra cost':'Miscellaneous'}
   }
   if(k==='job'){x.w='E';
-    if(!x.p){const nm=x.n.replace(/no description/,'').trim();x.p=nm?nm.replace(/\b\w/g,m=>m.toUpperCase()):'';x.newJob=!!x.p&&!findProject(x.p)}
+    if(!x.p){const nm=x.n.trim();x.p=nm?nm.replace(/\b\w/g,m=>m.toUpperCase()):'';x.newJob=!!x.p&&!findProject(x.p)}
     x.c=tick?'Project payment':(E_JOB.includes(x.c)?x.c:(CREW.some(kk=>hasWord(desc,kk))?'Team cost':/\brent(al)?\b/.test(desc)?'Rental cost':'Extra cost'));
     x.flag=!x.p}
   if(k==='save'){x.w='S';x.p='';x.c=GOLDW.test(desc)?'Gold':'Cash savings';x.flag=false;x.t=tick?'out':'in';x.q=x.c==='Gold'?x.q:null}
@@ -433,7 +434,7 @@ function editEntry(id){
    '<label>Wallet<select id="eW"><option value="E"'+((e.w||'E')==='E'?' selected':'')+'>eddytings</option><option value="H"'+(e.w==='H'?' selected':'')+'>Holdiit</option><option value="S"'+(e.w==='S'?' selected':'')+'>Savings</option></select></label>'+
    '<label class="full">Category<select id="eC">'+catOptions(e.w||'E',e.t,e.c)+'</select></label>'+
    '<label class="full">Project<select id="eP">'+projOptions(e.p,true)+'</select></label>'+
-   '<label class="full">Description<input id="eN" type="text" value="'+esc(e.n)+'"></label><label class="full">Gold ounces (savings only)<input id="eQ" type="number" step="0.01" inputmode="decimal" value="'+(e.q??'')+'"></label></div>'+
+   '<label class="full">Description<input id="eN" type="text" value="'+esc(e.n==='no description'?'':e.n)+'"></label><label class="full">Gold ounces (savings only)<input id="eQ" type="number" step="0.01" inputmode="decimal" value="'+(e.q??'')+'"></label></div>'+
    '<div class="row between" style="margin-top:16px"><button class="btn" id="eDel" style="color:var(--bad)">Delete</button><button class="btn primary" id="eSave">Save</button></div>');
   const refresh=()=>{$('#eC').innerHTML=catOptions($('#eW').value,$('#eT').value,$('#eC').value)};
   $('#eT').onchange=refresh;$('#eW').onchange=refresh;
@@ -455,7 +456,7 @@ function editProject(name){
   '<div class="grid3" style="margin:12px 0">'+tile('Received',money(s.rec))+tile('Costs',money(s.cost))+tile('Net profit',money(s.profit),'',s.profit<0?'neg':'pos')+'</div>'+
   '<div class="form"><label>Shoot date<input id="pD" type="date" value="'+(p.date||'')+'"></label><label>Budget ($)<input id="pB" type="number" inputmode="decimal" value="'+(p.budget??'')+'"></label>'+
   '</div>'+
-  '<h2>Money for this job</h2><div class="list">'+(allEntries().filter(e=>lc(e.p)===lc(p.name)).sort((a,b)=>a.d<b.d?-1:1).map(e=>'<div class="it" style="cursor:default"><div class="t">'+esc(e.n)+' <span class="muted small">'+e.d.slice(5)+'</span></div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'?'+':'')+money(e.a)+'</div><div class="m">'+esc(e.c)+'</div></div>').join('')||'<div class="empty">No money tagged yet.</div>')+'</div>'+
+  '<h2>Money for this job</h2><div class="list">'+(allEntries().filter(e=>lc(e.p)===lc(p.name)).sort((a,b)=>a.d<b.d?-1:1).map(e=>'<div class="it" style="cursor:default"><div class="t">'+esc(nm(e))+' <span class="muted small">'+e.d.slice(5)+'</span></div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'?'+':'')+money(e.a)+'</div><div class="m">'+esc(e.c)+'</div></div>').join('')||'<div class="empty">No money tagged yet.</div>')+'</div>'+
   '<div class="row between" style="margin-top:16px"><button class="btn" id="pDel" style="color:var(--bad)">Delete job</button><button class="btn primary" id="pSave">Save</button></div>');
   $('#pSave').onclick=()=>{p.date=$('#pD').value||p.date;p.budget=$('#pB').value===''?null:+$('#pB').value;persist('meta/projects');closeSheet();render();toast('Saved')};
   $('#pDel').onclick=()=>{if($('#pDel').dataset.sure){S.projects=S.projects.filter(x=>x!==p);persist('meta/projects');closeSheet();render();toast('Job deleted – its entries stay')}else{$('#pDel').dataset.sure=1;$('#pDel').textContent='Tap again to delete'}};
@@ -641,7 +642,7 @@ function bindSwipe(){
     it.addEventListener('click',e=>{if(moved){moved=false;return}if(w.classList.contains('open')){closeSwipes();return}if(document.querySelector('.sw.open')){closeSwipes();return}editEntry(id)});
     w.querySelector('.swdel').onclick=e=>{e.stopPropagation();w.classList.add('gone');setTimeout(()=>{removeEntry(id);render();toastUndo(id)},180)};
   })}
-function toastUndo(id){const e=S.entries[id];toast('Deleted · '+(e?money(e.a)+' '+esc(e.n||e.c):''));const t=document.querySelector('.toast');if(!t)return;
+function toastUndo(id){const e=S.entries[id];toast('Deleted · '+(e?money(e.a)+' '+esc(nm(e)):''));const t=document.querySelector('.toast');if(!t)return;
   const b=document.createElement('button');b.className='undo';b.textContent='Undo';b.onclick=()=>{const x=S.entries[id];if(x){x.deleted=false;S.out.e[id]=1;rebuild();persist('e');render();toast('Back')}};t.appendChild(b)}
 
 function setKind(k){S.kind=k;try{localStorage.setItem('em-kind',k)}catch(e){}
