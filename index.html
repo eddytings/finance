@@ -64,6 +64,15 @@ h3{margin:0;font-size:16px}
 .btn.ghost{background:none}
 .btn:disabled{opacity:.5;cursor:default}
 .btn:focus-visible,.seg button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+.ck{border:1px solid var(--line);border-radius:12px;background:var(--card);padding:4px 10px}
+.ckr{display:flex;align-items:center;gap:12px;border-bottom:1px solid var(--line)}
+.ckr:last-child{border-bottom:0}
+.ckb{width:26px;height:26px;border-radius:50%;border:2px solid var(--muted);background:none;flex:none;display:grid;place-items:center;cursor:pointer;color:transparent;padding:0;transition:background .12s}
+.ckr.on .ckb{background:var(--good);border-color:var(--good);color:#fff}
+.ckt{flex:1;border:0;background:none;font:16px/1.4 var(--f-num);padding:11px 0;min-width:0;outline:none;color:var(--ink)}
+.ckr.on .ckt{color:var(--good);font-weight:600}
+.ckt::placeholder{color:var(--muted);opacity:.6}
 textarea#quick{width:100%;min-height:118px;resize:vertical;border:1px solid var(--line);border-radius:12px;background:var(--card);padding:12px;font:15px/1.5 var(--f-num)}
 input[type=date],input[type=text],input[type=number],select{border:1px solid var(--line);border-radius:9px;background:var(--card);padding:8px 10px;min-width:0}
 .mic{width:44px;height:44px;border-radius:50%;padding:0;display:grid;place-items:center}

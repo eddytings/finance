@@ -105,7 +105,7 @@ async function sync(){
       const before=JSON.stringify([S.rules,S.settings]);S.rules=d.rules||{};S.settings=Object.assign(S.settings,{aed:d.aed||S.settings.aed,lbp:d.lbp||S.settings.lbp,gold:d.gold??S.settings.gold});
       if(JSON.stringify([S.rules,S.settings])!==before)changed=true}}
     cacheSave();
-    if(changed){rebuild();if(!S.preview.length&&!(document.activeElement&&['quick','mSearch'].includes(document.activeElement.id))&&$('#sheet').hidden)render()}
+    if(changed){rebuild();if(!S.preview.length&&!(document.activeElement&&(document.activeElement.id==='mSearch'||document.activeElement.closest&&document.activeElement.closest('#quick')))&&$('#sheet').hidden)render()}
   }catch(e){console.warn('sync failed',e);if(e&&/JWT|auth/i.test(e.message||''))toast('Please sign in again')}
   finally{syncing=false;setSync();if(syncAgain){syncAgain=false;queueSync()}}
 }
@@ -260,12 +260,12 @@ function viewAdd(){
       '<button class="btn ghost" id="clearPv">Cancel</button></div>';
   }
   return pageHead('Add','Type what you spent or received, check it, then save.')+(!navigator.onLine&&pending()?'<div class="banner">You are offline. New entries are kept on this device and will sync when you are back online.</div>':'')+
-  '<div class="cols"><div><div class="card stack"><label for="quick" class="small muted" style="font-weight:600">Type it like your notes – one line each</label>'+
-  '<textarea id="quick" placeholder="25 4g&#10;✓ 8000 cerelac&#10;110 aed dinner&#10;yesterday 40 fuel&#10;300 mike cerelac"></textarea>'+
+  '<div class="cols"><div><div class="card stack"><div class="small muted" style="font-weight:600">Type like your notes – one line each. Tap the circle when it is money you received.</div>'+
+  '<div id="quick" class="ck">'+rowsHtml()+'</div>'+
   '<div class="row between" style="flex-wrap:wrap"><div class="row"><input type="date" id="baseDate" value="'+(S.baseDate||today())+'" aria-label="Date for these lines">'+
   (dict?'<button class="btn mic" id="micBtn" aria-label="Speak instead of typing"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>':'')+
   '</div><button class="btn primary" id="readBtn">Read it</button></div>'+
-  '<div class="hint"><code>✓</code> or <code>+</code> at the start = money in · add <code>aed</code> or <code>lbp</code> for other currencies · start with <code>job cerelac 8000</code> adds a job with its budget · <code>yesterday</code> or <code>12 nov</code> for another day · a project name tags the job · "bags" or "holdiit" goes to Holdiit · "gold", "oz" or "savings" goes to Savings (e.g. <code>4000 gold 1 oz</code>).</div></div>'+
+  '<div class="hint">Tap ◯ = money received · Enter = new line · add <code>aed</code> or <code>lbp</code> for other currencies · start with <code>job cerelac 8000</code> adds a job with its budget · <code>yesterday</code> or <code>12 nov</code> for another day · a project name tags the job · "bags" or "holdiit" goes to Holdiit · "gold", "oz" or "savings" goes to Savings (e.g. <code>4000 gold 1 oz</code>).</div></div>'+
   pvh+'</div><div><h2 class="first">Latest</h2><div class="card" style="padding:4px 12px">'+groupedList(recent)+'</div></div></div>';
 }
 function tile(l,v,s,cls){return '<div class="tile '+(cls||'')+'"><span class="l">'+l+'</span><span class="v">'+v+'</span>'+(s?'<span class="s">'+s+'</span>':'')+'</div>'}
@@ -360,6 +360,28 @@ function viewSavings(){
   '<h2>All savings entries</h2><div class="card" style="padding:4px 12px">'+groupedList(sorted)+'</div>';
 }
 
+
+/* ---------- checklist typing (like Notes) ---------- */
+const CK='<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+const PH=['25 4g','8000 cerelac','110 aed dinner','yesterday 40 fuel'];
+function rowsHtml(){return S.rows.map((r,i)=>'<div class="ckr'+(r.c?' on':'')+'"><button type="button" class="ckb" data-ck="'+i+'" aria-pressed="'+(!!r.c)+'" aria-label="Money received">'+CK+'</button><input class="ckt" data-ln="'+i+'" value="'+esc(r.t)+'" placeholder="'+(i<PH.length?PH[i]:'')+'" autocomplete="off" autocapitalize="off" enterkeyhint="next"></div>').join('')}
+function saveRows(){try{localStorage.setItem('em-rows',JSON.stringify(S.rows))}catch(e){}}
+function focusRow(i,end){const el=document.querySelector('.ckt[data-ln="'+i+'"]');if(el){el.focus();if(end){const n=el.value.length;el.setSelectionRange(n,n)}else el.setSelectionRange(0,0)}}
+function bindRows2(){
+  const q=$('#quick');if(!q||q.dataset.b)return;q.dataset.b=1;
+  q.addEventListener('click',ev=>{const b=ev.target.closest('.ckb');if(!b)return;const i=+b.dataset.ck;S.rows[i].c=!S.rows[i].c;b.setAttribute('aria-pressed',S.rows[i].c);b.parentElement.classList.toggle('on',S.rows[i].c);saveRows();const inp=b.parentElement.querySelector('.ckt');if(inp&&!inp.value)inp.focus()});
+  q.addEventListener('input',ev=>{const el=ev.target.closest('.ckt');if(!el)return;S.rows[+el.dataset.ln].t=el.value;saveRows()});
+  q.addEventListener('keydown',ev=>{const el=ev.target.closest('.ckt');if(!el)return;const i=+el.dataset.ln;
+    if(ev.key==='Enter'&&!ev.isComposing){ev.preventDefault();const pos=el.selectionStart;const r=S.rows[i];const tail=r.t.slice(pos);r.t=r.t.slice(0,pos);S.rows.splice(i+1,0,{t:tail,c:false});saveRows();q.innerHTML=rowsHtml();focusRow(i+1,false)}
+    else if(ev.key==='Backspace'&&el.selectionStart===0&&el.selectionEnd===0&&i>0){ev.preventDefault();const prev=S.rows[i-1];const n=prev.t.length;prev.t+=S.rows[i].t;S.rows.splice(i,1);saveRows();q.innerHTML=rowsHtml();const pe=document.querySelector('.ckt[data-ln="'+(i-1)+'"]');if(pe){pe.focus();pe.setSelectionRange(n,n)}}
+    else if(ev.key==='ArrowDown'&&i<S.rows.length-1){ev.preventDefault();focusRow(i+1,true)}
+    else if(ev.key==='ArrowUp'&&i>0){ev.preventDefault();focusRow(i-1,true)}});
+  q.addEventListener('paste',ev=>{const el=ev.target.closest('.ckt');if(!el)return;const txt=(ev.clipboardData||window.clipboardData).getData('text');if(!/\n/.test(txt))return;ev.preventDefault();
+    const i=+el.dataset.ln;const parts=txt.split(/\r?\n/).map(x=>x.trim()).filter(Boolean).map(x=>{const c=/^[✓✔+]/.test(x);return {t:x.replace(/^[✓✔+◦•\-]\s*/,''),c}});
+    const r=S.rows[i];const before=r.t.slice(0,el.selectionStart);if(before.trim()){parts[0].t=before+parts[0].t}
+    S.rows.splice(i,1,...parts);saveRows();q.innerHTML=rowsHtml();focusRow(i+parts.length-1,true)});
+}
+
 /* ---------- edit sheets ---------- */
 function openSheet(html){$('#sheetPanel').innerHTML=html;$('#sheet').hidden=false;bindSheet()}
 function closeSheet(){$('#sheet').hidden=true;$('#sheetPanel').innerHTML=''}
@@ -413,10 +435,10 @@ function learn(e,orig){
 function bind(){
   const v=S.view;
   if(v==='add'){
-    const q=$('#quick');q.value=S.draft||'';q.oninput=()=>{S.draft=q.value;try{localStorage.setItem('em-draft',q.value)}catch(e){}};
+    const q=$('#quick');bindRows2();
     $('#baseDate').onchange=e=>{S.baseDate=e.target.value};
-    $('#readBtn').onclick=()=>{const base=$('#baseDate').value||today();const lines=q.value.split(/\n+/).map(l=>readLine(l,base)).filter(Boolean);
-      if(!lines.length){q.focus();return}S.preview=lines.map(l=>({...l,orig:{c:l.c,p:l.p,w:l.w}}));S.draft='';try{localStorage.removeItem('em-draft')}catch(e){}render()};
+    $('#readBtn').onclick=()=>{const base=$('#baseDate').value||today();const lines=S.rows.filter(r=>r.t.trim()).map(r=>readLine((r.c?'✓ ':'')+r.t,base)).filter(Boolean);
+      if(!lines.length){const f=q.querySelector('.ckt');f&&f.focus();return}S.preview=lines.map(l=>({...l,orig:{c:l.c,p:l.p,w:l.w}}));S.rows=[{t:'',c:false}];saveRows();render()};
     const mic=$('#micBtn');if(mic)mic.onclick=()=>{
       if(mic.classList.contains('on')){dict.stop().catch(()=>{});return}
       dict.start().catch(err=>{if(err&&err.code==='not_granted')mic.remove()});
@@ -524,7 +546,7 @@ function restoreJson(ev){
       rec.onresult=ev=>{for(let i=ev.resultIndex;i<ev.results.length;i++)if(ev.results[i].isFinal&&fin)fin({text:ev.results[i][0].transcript})};
       rec.onend=()=>st&&st({state:'idle'});rec.onerror=()=>st&&st({state:'idle'});rec.start();st&&st({state:'listening'});return Promise.resolve()},
     stop(){try{rec&&rec.stop()}catch(e){}return Promise.resolve()}};
-  dict.onFinal(({text})=>{const q=$('#quick');if(!q)return;q.value=(q.value&&!q.value.endsWith('\n')?q.value+'\n':q.value)+text.trim();S.draft=q.value});
+  dict.onFinal(({text})=>{const last=S.rows[S.rows.length-1];if(last&&!last.t.trim())last.t=text.trim();else S.rows.push({t:text.trim(),c:false});saveRows();const q=$('#quick');if(q){q.innerHTML=rowsHtml()}});
   dict.onState(({state})=>{const m=$('#micBtn');if(m)m.classList.toggle('on',state==='listening')});
 })();
 downloads={save({filename,data}){const blob=data instanceof Blob?data:new Blob([data]);const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},2000);return Promise.resolve({status:'saved'})}};
@@ -554,7 +576,7 @@ function confirmTwice(){const b=$('#signOutBtn');if(b&&!b.dataset.sure){b.datase
 $('#wE').onclick=()=>{S.wallet='E';render()};$('#wH').onclick=()=>{S.wallet='H';render()};
 function route(){if(!session)return;const h=(location.hash||'#add').slice(1);setView(['add','month','jobs','savings','year','more'].includes(h)?h:'add')}
 window.addEventListener('hashchange',route);
-try{S.draft=localStorage.getItem('em-draft')||''}catch(e){}
+try{S.rows=JSON.parse(localStorage.getItem('em-rows')||'null')}catch(e){}if(!Array.isArray(S.rows)||!S.rows.length)S.rows=[{t:'',c:false}];
 window.addEventListener('online',()=>{setSync();sync()});window.addEventListener('offline',setSync);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)sync()});
 setInterval(()=>{if(!document.hidden)sync()},60000);
