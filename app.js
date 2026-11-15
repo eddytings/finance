@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=30;
+const APPV=31;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -659,7 +659,7 @@ function setKind(k){S.kind=k;try{localStorage.setItem('em-kind',k)}catch(e){}
   document.querySelectorAll('[data-kind]').forEach(x=>x.setAttribute('aria-pressed',x.dataset.kind===k))}
 
 /* layout fixes applied from here too, so they show even if the page itself is cached */
-(function(){const st=document.createElement('style');st.textContent='.ckt,.ckt:focus,.ckt:focus-visible{outline:none!important;box-shadow:none!important}.ckc{margin-top:6px!important;padding-bottom:12px!important;font-size:13px}.eq{margin-top:10px;display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}.eq>div{display:flex;flex-direction:column;gap:2px;min-width:0}.eq .l{font-size:12px;color:var(--muted);line-height:1.2}.eq .v{font:700 17px var(--f-num);color:var(--ink)}.eq>b{font-size:20px;color:var(--muted);font-weight:600}.eq .tot .v{color:var(--bad)}.mpick{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}.mpick span{font-size:.6em;color:var(--muted);vertical-align:middle}.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}.mgrid button{padding:16px 0;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;font-weight:600;cursor:pointer}.mgrid button.now{border-color:var(--accent)}.mgrid button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.bars .b[data-cat]{cursor:pointer;border-radius:8px}.bars .b[data-cat]:active{background:var(--bg)}.chev{font-style:normal;color:var(--muted)}.cseg{margin-top:12px;display:flex}.cseg button{flex:1;border:0;background:none;color:var(--muted);padding:8px;border-radius:999px;font-weight:600;cursor:pointer}.cseg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}h4.ch{margin:18px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}h2.wait{background:#6e0f24!important;color:#fff!important;font-weight:800;letter-spacing:.08em;box-shadow:0 0 0 1px #8f1a33}';document.head.appendChild(st)})();
+(function(){const st=document.createElement('style');st.textContent='.ckt,.ckt:focus,.ckt:focus-visible{outline:none!important;box-shadow:none!important}.ckc{margin-top:6px!important;padding-bottom:12px!important;font-size:13px}.eq{margin-top:10px;display:grid;grid-template-columns:1fr auto 1fr auto 1fr;align-items:center;gap:6px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}.eq>div{display:flex;flex-direction:column;gap:2px;min-width:0}.eq .l{font-size:12px;color:var(--muted);line-height:1.2}.eq .v{font:700 17px var(--f-num);color:var(--ink)}.eq>b{font-size:20px;color:var(--muted);font-weight:600}.eq .tot .v{color:var(--bad)}.mpick{background:none;border:0;color:inherit;font:inherit;cursor:pointer;padding:0}.mpick span{font-size:.6em;color:var(--muted);vertical-align:middle}.mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:16px}.mgrid button{padding:16px 0;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font-size:16px;font-weight:600;cursor:pointer}.mgrid button.now{border-color:var(--accent)}.mgrid button.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}.bars .b[data-cat]{cursor:pointer;border-radius:8px}.bars .b[data-cat]:active{background:var(--bg)}.chev{font-style:normal;color:var(--muted)}.cseg{margin-top:12px;display:flex}.cseg button{flex:1;border:0;background:none;color:var(--muted);padding:8px;border-radius:999px;font-weight:600;cursor:pointer}.cseg button[aria-pressed=true]{background:var(--ink);color:var(--bg)}h4.ch{margin:18px 0 6px;font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}.tile,.eq>div{cursor:pointer}h2.wait{background:#6e0f24!important;color:#fff!important;font-weight:800;letter-spacing:.08em;box-shadow:0 0 0 1px #8f1a33}';document.head.appendChild(st)})();
 
 function monthPicker(y){
   const cur=S.ym,now=today().slice(0,7);
@@ -691,3 +691,29 @@ function catSheet(cat,scope){
   document.querySelectorAll('[data-cs]').forEach(b=>b.onclick=()=>catSheet(cat,b.dataset.cs));
 }
 document.addEventListener('click',ev=>{const b=ev.target.closest&&ev.target.closest('.bars .b[data-cat]');if(b)catSheet(b.dataset.cat,S.view==='year'?'year':'month')});
+
+/* ---------- tap a number in Month to see what's behind it ---------- */
+function detailSheet(title,total,rows,note){
+  openSheet('<div class="row between"><h3>'+esc(title)+'</h3><button class="x" id="sx" aria-label="Close">×</button></div>'+
+    '<div class="tile big" style="margin-top:12px"><span class="l">'+esc(MONTHS[+S.ym.slice(5)-1]+' '+S.ym.slice(0,4))+'</span><span class="v">'+total+'</span>'+(note?'<span class="s">'+note+'</span>':'')+'</div>'+
+    (rows.length?'<div class="list" style="margin-top:12px">'+rows.join('')+'</div>':'<div class="empty">Nothing this month.</div>'))}
+const dshort=d=>new Date(d+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'});
+const eRow=e=>'<div class="it" style="cursor:default"><div class="t">'+esc(nm(e))+' <span class="muted small">'+dshort(e.d)+(e.p?' · '+esc(e.p):'')+(nm(e)!==e.c?' · '+esc(e.c):'')+'</span></div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'&&e.a>0?'+':'')+money(e.a)+'</div></div>';
+function jRow(p){const s=projStats(p);return '<div class="it" style="cursor:default"><div class="t">'+esc(p.name)+' <span class="muted small">'+dshort(p.date)+' · '+(s.hasB?'budget '+money(p.budget):'no price yet')+' · received '+money(s.rec)+(s.owed>0?' · owes '+money(s.owed):'')+'</span></div><div class="amt">'+money(s.value)+'</div></div>'}
+function openMonthDetail(label){
+  const s=monthSummary(S.ym,'E');const by=(f)=>s.es.filter(f).sort((a,b)=>a.d<b.d?1:-1);
+  const isJob=e=>E_JOB.includes(e.c);
+  if(label==='Revenue')return detailSheet('Revenue',money(s.revenue),s.jobs.map(jRow),'value of the jobs dated this month (budget, or what was received if no budget)');
+  if(label==='Money received')return detailSheet('Money received',money(s.rec),by(e=>e.t==='in').map(eRow),'every payment that came in this month');
+  if(label==='Job costs')return detailSheet('Job costs',money(s.job),by(e=>e.t==='out'&&isJob(e)).map(eRow));
+  if(label==='Expenses')return detailSheet('Expenses',money(s.exp),by(e=>e.t==='out'&&!isJob(e)).map(eRow));
+  if(label==='Money spent')return detailSheet('Money spent',money(s.spent),by(e=>e.t==='out').map(eRow));
+  if(label==='Net profit')return detailSheet('Net profit',money(s.profit,true),[
+    '<div class="it" style="cursor:default"><div class="t">Revenue (jobs dated this month)</div><div class="amt in">+'+money(s.revenue)+'</div></div>',
+    '<div class="it" style="cursor:default"><div class="t">Job costs</div><div class="amt">−'+money(s.job)+'</div></div>',
+    '<div class="it" style="cursor:default"><div class="t">Expenses</div><div class="amt">−'+money(s.exp)+'</div></div>'].concat(s.jobs.length?['<h4 class="ch">Jobs this month</h4>'].concat(s.jobs.map(jRow)):[]),'revenue − job costs − expenses');
+  if(label==='Clients owe you'){const ps=S.projects.filter(p=>projStats(p).owed>0||(!projStats(p).hasB&&projStats(p).rec<=0)).sort((a,b)=>a.date<b.date?1:-1);
+    return detailSheet('Clients owe you',money(totalOwed()),ps.map(jRow),'all jobs not fully paid')}
+}
+document.addEventListener('click',ev=>{if(S.view!=='month'||!ev.target.closest)return;
+  const t=ev.target.closest('.tile,.eq>div');if(!t||t.id==='setCash')return;const l=t.querySelector('.l');if(l)openMonthDetail(l.textContent.trim())});
