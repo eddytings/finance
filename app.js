@@ -118,7 +118,7 @@ const CASH_FROM='2026-01-01'; // cash in hand counts from the start of 2026
 function cashAt(x){if(x<CASH_FROM)return null;let b=0;for(const e of allEntries())if(e.d>=CASH_FROM&&e.d<=x)b+=e.t==='in'?e.a:-e.a;return b}
 function monthEndOf(ym){const [y,m]=ym.split('-').map(Number);const d=new Date(Date.UTC(y,m,0)).toISOString().slice(0,10);const t=today();return d>t?t:d}
 function cashTile(ym,s){const v=cashAt(monthEndOf(ym));
-  if(v===null)return '<button type="button" class="tile big" id="setCash" style="text-align:left;cursor:pointer"><span class="l">Cash in hand</span><span class="v" style="font-size:20px">Tap to set</span><span class="s">type what you have today</span></button>';
+  if(v===null)return tile('Cash in hand','—','counted from Jan 2026','big');
   return '<button type="button" class="tile big '+(v<0?'neg':'pos')+'" id="setCash" style="text-align:left;cursor:pointer"><span class="l">Cash in hand</span><span class="v">'+money(v)+'</span><span class="s">this month '+money(s.cash,true)+'</span></button>'}
 function cashSheet(){const c=S.settings.cash||{};
   openSheet('<div class="row between"><h3>Cash in hand today</h3><button class="x" id="sx" aria-label="Close">×</button></div><div class="form" style="margin-top:12px"><label class="full">Amount you have now ($)<input id="cashA" type="number" inputmode="decimal" value="'+(c.a??'')+'"></label></div><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="btn primary" id="cashSave">Save</button></div>');
