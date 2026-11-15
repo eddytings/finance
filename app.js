@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=29;
+const APPV=30;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -286,9 +286,9 @@ function viewMonth(){
   }
   return monthBar()+
   '<div class="hero">'+tile('Net profit',money(s.profit,true),'Revenue − job costs − expenses','big '+(s.profit<0?'neg':s.profit>0?'pos':''))+
-  cashTile(S.ym,'this month '+money(s.cash,true))+'</div>'+
+  cashTile(S.ym,'tap to correct')+'</div>'+
   '<div class="eq"><div><span class="l">Job costs</span><span class="v">'+money(s.job)+'</span></div><b>+</b><div><span class="l">Expenses</span><span class="v">'+money(s.exp)+'</span></div><b>=</b><div class="tot"><span class="l">Money spent</span><span class="v">'+money(s.spent)+'</span></div></div>'+
-  '<div class="grid3" style="margin-top:10px">'+tile('Revenue',money(s.revenue),s.jobs.length+' job'+(s.jobs.length===1?'':'s'))+tile('Money received',money(s.rec))+tile('This month in − out',money(s.cash,true),'received − spent',s.cash<0?'neg':'')+tile('Clients owe you',money(totalOwed()),'all jobs')+'</div>'+
+  '<div class="grid3" style="margin-top:10px">'+tile('Revenue',money(s.revenue),s.jobs.length+' job'+(s.jobs.length===1?'':'s'))+tile('Money received',money(s.rec))+tile('Clients owe you',money(totalOwed()),'all jobs')+'</div>'+
   savedNote(S.ym)+'<div class="cols"><div><h2>Where the money went</h2><div class="card">'+bars(s.byCat,'E')+'<div class="hint" style="margin-top:6px">Tap a category to see where the money goes · orange = job costs</div></div>'+
   '</div><div><h2>Jobs this month</h2><div class="card" style="padding:4px 12px">'+(s.jobs.length?s.jobs.map(jobCard).join(''):'<div class="empty">No jobs dated this month.</div>')+'</div>'+
   '</div></div><h2>All entries</h2><div class="card" style="padding:8px 12px"><input type="text" class="search" id="mSearch" placeholder="Search this month" aria-label="Search this month"><div id="mList">'+groupedList([...s.es].reverse())+'</div></div>';
