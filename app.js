@@ -263,7 +263,7 @@ function jobCard(p){
   '<div class="meta"><span>'+new Date(p.date+'T12:00').toLocaleDateString('en-GB',{day:'numeric',month:'short'})+'</span>'+
   '<span>Budget <b>'+(s.hasB?money(p.budget):'—')+'</b></span><span>Cost <b>'+money(s.cost)+'</b></span><span>Received <b>'+money(s.rec)+'</b></span>'+
   (unpaid?'<span class="pill late">Not fully paid · owes '+money(s.owed)+'</span>':(s.hasB&&s.rec>0?'<span class="pill in">Paid</span>':''))+
-  (!s.hasB?'<span class="pill owe">Add budget</span>':'')+'</div></div>';
+  '</div></div>';
 }
 function pageHead(t,lead,right){return '<div class="phead"><div><h1>'+t+'</h1>'+(lead?'<p class="lead">'+lead+'</p>':'')+'</div>'+(right||'')+'</div>'}
 function monthBar(){const [y,m]=S.ym.split('-').map(Number);return '<p class="lead" style="margin:4px 0 0">'+(S.wallet==='H'?'Holdiit this month: sales, costs and profit.':'Your month: what you earned, what you spent, and what is left.')+'</p>'+'<div class="monthbar"><button class="arrow" id="prevM" aria-label="Previous month">‹</button><h1>'+MONTHS[m-1]+' '+y+'</h1><button class="arrow" id="nextM" aria-label="Next month">›</button></div>'}
@@ -290,7 +290,7 @@ function viewJobs(){
   const owed=ps.map(p=>[p,projStats(p)]).filter(([,s])=>s.owed>0).sort((a,b)=>(a[0].date||'')<(b[0].date||'')?-1:1);
   const noB=ps.filter(p=>!projStats(p).hasB).length;
   let h=pageHead('Jobs','Every job, what it cost, what you made, and who still owes you.','<button class="btn primary" id="newJob">+ New job</button>')+
-  '<div class="hero">'+tile('Clients owe you',money(totalOwed()),owed.length+' job'+(owed.length===1?'':'s')+' not fully paid','big')+tile('Missing budget',noB,'add them so "owes you" is right','big')+'</div>';
+  '<div class="hero" style="grid-template-columns:1fr">'+tile('Clients owe you',money(totalOwed()),owed.length+' job'+(owed.length===1?'':'s')+' not fully paid','big')+'</div>';
   if(owed.length)h+='<h2>Waiting for money</h2><div class="card" style="padding:4px 12px">'+owed.map(([p])=>jobCard(p)).join('')+'</div>';
   const by={};for(const p of ps){const k=(p.date||'').slice(0,7);(by[k]=by[k]||[]).push(p)}
   for(const k of Object.keys(by).sort().reverse()){const [y,m]=k.split('-').map(Number);const list=by[k].sort((a,b)=>a.date<b.date?-1:1);
@@ -324,7 +324,7 @@ function viewMore(){
   '<div class="card stack"><h3>Currencies</h3><div class="form"><label>1 USD in AED<input type="number" step="0.0001" id="rateAed" value="'+S.settings.aed+'"></label><label>1 USD in LBP<input type="number" step="1" id="rateLbp" value="'+S.settings.lbp+'"></label><label class="full">Gold price today ($ per ounce)<input type="number" step="1" id="goldPx" value="'+(S.settings.gold||'')+'"></label></div></div>'+
   '<div class="card stack"><h3>What the app has learned ('+rk.length+')</h3><div class="hint">When you fix a category or project before saving, the app remembers it for next time. Remove one if it learned something wrong.</div>'+
   (rk.length?'<div class="list">'+rk.map(k=>'<div class="it" style="cursor:default"><div class="t">'+esc(k)+'</div><button class="x" data-unrule="'+esc(k)+'" aria-label="Forget this">×</button><div class="m">'+esc(S.rules[k].c)+(S.rules[k].p?' · '+esc(S.rules[k].p):'')+(S.rules[k].w==='H'?' · Holdiit':'')+'</div></div>').join('')+'</div>':'<div class="empty">Nothing learned yet.</div>')+'</div>'+
-  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 12. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
+  '<div class="card stack"><h3>Account</h3><div class="hint">Signed in as '+esc(session&&session.user.email)+'. App version 13. Your data is saved in your private account and on this device, so a new phone or laptop gets everything after you sign in.</div><div class="hint">To change or add something to this app, ask Claude in any chat. Updates reach every device automatically.</div><label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="lockChk" style="width:20px;height:20px"'+(askEveryTime()?' checked':'')+'> Ask for my password every time I open the app on this device</label>'+(window.PublicKeyCredential?'<label class="row" style="gap:10px;font-weight:600"><input type="checkbox" id="bioChk" style="width:20px;height:20px"'+(bioOn()?' checked':'')+'> Unlock with Face ID / fingerprint on this device</label>':'')+'<button class="btn" id="signOutBtn" style="color:var(--bad)">Sign out</button></div></div>';
 }
 
 
@@ -358,11 +358,11 @@ function goldNoAmount(raw,x){const t=lc(raw),m=t.match(/(\d+(?:\.\d+)?)\s*(oz|ou
 async function refreshGold(){try{if(S.goldLive&&Date.now()-S.goldLive.at<6*3600e3)return;const j=await fetch('https://api.gold-api.com/price/XAU',{cache:'no-cache'}).then(r=>r.json());
   if(j&&j.price){S.goldLive={p:Math.round(j.price),at:Date.now()};try{localStorage.setItem('fin-gold',JSON.stringify(S.goldLive))}catch(e){}if(S.view==='savings')render();else refreshChips()}}catch(e){}}
 try{S.goldLive=JSON.parse(localStorage.getItem('fin-gold')||'null')}catch(e){}
-const KINDS=[['auto','Auto'],['job','Job'],['save','Savings'],['hold','Holdiit'],['c:Office','Office'],['c:Home','Home'],['c:Dubai','Dubai'],['c:Food (personal)','Food'],['c:Subscriptions & AI','Subscriptions'],['c:Car & Fuel','Car']];
-try{S.kind=localStorage.getItem('em-kind')||'auto';if(!KINDS.some(([k])=>k===S.kind))S.kind='auto'}catch(e){S.kind='auto'}
+const KINDS=[['job','Job'],['save','Savings'],['hold','Holdiit'],['c:Office','Office'],['c:Home','Home'],['c:Dubai','Dubai'],['c:Food (personal)','Food'],['c:Subscriptions & AI','Subscriptions'],['c:Car & Fuel','Car'],['c:Miscellaneous','Misc']];
+try{S.kind=localStorage.getItem('em-kind')||'c:Miscellaneous';if(!KINDS.some(([k])=>k===S.kind))S.kind='c:Miscellaneous'}catch(e){S.kind='c:Miscellaneous'}
 // The tick means money came IN to the selected section; no tick means money went OUT of it.
 function readTyped(r){
-  const k=S.kind||'auto',base=S.baseDate||today(),tick=!!r.c;
+  const k=S.kind||'c:Miscellaneous',base=S.baseDate||today(),tick=!!r.c;
   if(/^\s*new\s+(job|project)\b/i.test(r.t))return readLine(r.t,base);
   let x=readLine((tick?'✓ ':'')+r.t,base);if(!x||x.kind==='job')return x;
   if(!x.a&&(k==='save'||x.w==='S'||GOLDW.test(lc(r.t))))x=goldNoAmount(r.t,x);if(!x.a)return x;
