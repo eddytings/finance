@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=39;
+const APPV=40;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -635,9 +635,15 @@ setInterval(()=>{if(!document.hidden)sync()},60000);
 function askEveryTime(){try{const v=localStorage.getItem('fin-lock');if(v!==null)return v==='1';return !matchMedia('(pointer:coarse)').matches}catch(e){return false}}
 (async()=>{
   sb=window.supabase.createClient(SB_URL,SB_KEY,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true,storage:askEveryTime()?window.sessionStorage:window.localStorage}});
-  const {data}=await sb.auth.getSession();session=data.session;
+  // Offline-friendly start: if there's a saved login, open from the saved data right away
+  // instead of waiting for the server (which can't be reached without internet).
+  const store=askEveryTime()?window.sessionStorage:window.localStorage;let saved=null;
+  try{const k=Object.keys(store).find(k=>/^sb-.*-auth-token$/.test(k));if(k){const v=JSON.parse(store.getItem(k));saved=(v&&(v.user||(v.currentSession&&v.currentSession.user)))||null}}catch(e){}
+  const quick=new Promise(r=>setTimeout(()=>r(null),navigator.onLine?3000:0));
+  const res=await Promise.race([sb.auth.getSession().then(r=>r.data.session).catch(()=>null),quick]);
+  session=res||(saved?{user:saved,offline:true}:null);
   if(session)startApp();else loginView();
-  sb.auth.onAuthStateChange((ev,s)=>{const had=!!session;session=s;if(s&&!had)startApp();if(!s&&had)loginView()});
+  sb.auth.onAuthStateChange((ev,s)=>{const had=!!session;session=s;if(s&&!had)startApp();if(!s&&had&&navigator.onLine)loginView()});
 })();
 if('serviceWorker' in navigator){
   navigator.serviceWorker.register('sw.js').then(reg=>{reg.update();setInterval(()=>reg.update(),30*60000)}).catch(()=>{});
