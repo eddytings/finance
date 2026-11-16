@@ -26,7 +26,7 @@ const H_KW=[['Stock & supplier',['supplier','stock','alibaba','order','bags']],[
 const HOLDIIT_WORDS=['holdiit','bag','bags','supplier'];
 const S_CATS=['Gold','Cash savings','Other savings'];
 const SAVE_WORDS=['gold','ounce','ounces','oz','savings','saving','save','lingot'];
-const APPV=40;
+const APPV=41;
 const MONTHS=['January','February','March','April','May','June','July','August','September','October','November','December'];
 
 /* ---------- state ---------- */
@@ -238,7 +238,7 @@ function projOptions(sel,noNew){
 const nm=e=>(e.n&&e.n!=='no description')?e.n:e.c;
 function entryRow(e){
   const h=(e.w||'E')==='H';
-  return '<div class="sw"><button class="swdel" data-swdel="'+e.i+'">Delete</button><div class="it" data-edit="'+e.i+'"><div class="t">'+esc(nm(e))+'</div><div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'&&e.a>0?'+':'')+money(e.a)+'</div>'+
+  return '<div class="sw"><button class="swdel" data-swdel="'+e.i+'">Delete</button><div class="it" data-edit="'+e.i+'"><div class="t">'+esc(nm(e))+'</div>'+(e.w==='S'?'<div class="amt'+(e.t==='out'?' in':'')+'">'+(e.t==='out'?'+':'−')+money(e.a)+'</div>':'<div class="amt'+(e.t==='in'?' in':'')+'">'+(e.t==='in'&&e.a>0?'+':'')+money(e.a)+'</div>')+''+
   '<div class="m">'+(h?'<span class="pill h">Holdiit</span>':'')+(e.w==='S'?'<span class="pill s">Savings'+(e.q?' · '+e.q+' oz':'')+'</span>':'')+(nm(e)===e.c?'':'<span>'+esc(e.c)+'</span>')+(e.p?'<span>· '+esc(e.p)+'</span>':'')+'</div></div></div>';
 }
 function groupedList(es){
