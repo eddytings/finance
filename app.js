@@ -252,7 +252,8 @@ function jobPv(e,i){return '<div class="pv jpv" data-i="'+i+'" style="border-col
   '<div class="f"><input type="text" data-j="name" aria-label="Job name" value="'+esc(e.name)+'" placeholder="Job name"><input type="number" inputmode="decimal" data-j="a" aria-label="Budget" placeholder="Budget $" value="'+(e.a??'')+'">'+
   '<input type="date" data-j="d" aria-label="Shoot date" value="'+e.d+'"><button class="x" data-del="'+i+'" aria-label="Remove this line">×</button></div></div>'}
 function viewAdd(){
-  const recent=allEntries().map((e,ix)=>[e,ix]).sort((a,b)=>a[0].d<b[0].d?1:a[0].d>b[0].d?-1:b[1]-a[1]).slice(0,40).map(x=>x[0]);
+  const cut=(()=>{const x=new Date(today()+'T12:00');x.setMonth(x.getMonth()-1);return x.toISOString().slice(0,10)})();
+  const recent=allEntries().map((e,ix)=>[e,ix]).filter(x=>x[0].d>=cut).sort((a,b)=>a[0].d<b[0].d?1:a[0].d>b[0].d?-1:b[1]-a[1]).map(x=>x[0]);
   return pageHead('Add','')+(!navigator.onLine&&pending()?'<div class="banner">Offline – saved on this device, will sync later.</div>':'')+
   '<div class="cols"><div><div class="card stack">'+
   '<div class="kinds" role="group" aria-label="Type">'+KINDS.map(([k,l])=>'<button type="button" data-kind="'+k+'" aria-pressed="'+((S.kind||'auto')===k)+'">'+l+'</button>').join('')+'</div>'+
